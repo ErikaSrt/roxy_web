@@ -32,6 +32,7 @@ Concentra as telas e fluxos principais:
 - Splash inicial da logo.
 - Login e cadastro profissional simples.
 - Layout com navegacao lateral/responsiva.
+- Dashboard clinico.
 - Lista de pacientes.
 - Cadastro e edicao de paciente.
 - Cards de exercicios.
@@ -85,7 +86,7 @@ Chaves usadas:
 - `roxy-patients`
 - `roxy-sessions`
 
-Esse modelo facilita apresentacao e testes sem backend, mas nao deve ser usado sozinho em producao com dados reais.
+Esse modelo facilita apresentacao e testes sem backend, mas nao deve ser usado sozinho em producao com dados reais. Os audios gravados tambem ficam em `localStorage` como data URL dentro dos registros de sessao.
 
 ## Evolucao Para Producao
 
@@ -103,7 +104,9 @@ Para uso real, os proximos passos recomendados sao:
 
 - A crianca nao possui login proprio.
 - A fonoaudiologa controla a avaliacao dos exercicios.
-- O microfone nao salva audio.
+- O microfone grava a resposta da crianca e salva o audio no historico local da sessao.
+- O menu permite trocar o paciente ativo sem mudar de tela.
+- O dashboard mostra o progresso geral da fonoaudiologa.
 - As cartas aparecem de surpresa apenas no resultado final.
 - O prontuario fica dentro do menu Relatorios.
 - O app preserva a estetica original do prototipo, com melhorias de cor, logo e responsividade.

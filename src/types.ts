@@ -1,4 +1,4 @@
-export type AppView = 'patients' | 'patient-form' | 'exercises' | 'practice' | 'result' | 'reports'
+export type AppView = 'dashboard' | 'patients' | 'patient-form' | 'exercises' | 'practice' | 'result' | 'reports'
 
 export type ExerciseId = 'repete-comigo' | 'rimas-divertidas' | 'monte-historias' | 'sons-e-mais'
 
@@ -60,6 +60,16 @@ export interface PromptAttempt {
   attempts: number
 }
 
+export interface AudioClip {
+  id: string
+  promptId: string
+  promptTitle: string
+  dataUrl: string
+  mimeType: string
+  durationMs: number
+  createdAt: string
+}
+
 export interface SessionRecord {
   id: string
   patientId: string
@@ -71,4 +81,5 @@ export interface SessionRecord {
   notes: string
   badge: Badge
   attempts: PromptAttempt[]
+  audioClips?: AudioClip[]
 }

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import {
+  Activity,
   ArrowLeft,
   ArrowRight,
   Award,
+  BarChart3,
   CalendarDays,
   Check,
   Download,
@@ -12,11 +14,14 @@ import {
   Heart,
   LogOut,
   Mic,
+  PlayCircle,
   PlusCircle,
+  Radio,
   Save,
   Search,
   ShieldCheck,
   Sparkles,
+  Square,
   Trash2,
   UserRound,
   UsersRound,
@@ -27,7 +32,7 @@ import { jsPDF } from 'jspdf'
 import './App.css'
 import { ROXY_LOGO, badges, exercises, getBadge, getExercise, samplePatients } from './data'
 import { createId, useStoredState } from './storage'
-import type { AppView, Exercise, ExerciseId, Patient, Professional, PromptAttempt, Rating, SessionRecord } from './types'
+import type { AppView, AudioClip, Exercise, ExerciseId, Patient, Professional, PromptAttempt, Rating, SessionRecord } from './types'
 
 const emptyProfessional: Professional = {
   name: '',
@@ -50,6 +55,10 @@ const emptyPatient: Patient = {
 }
 
 const viewTitles: Record<AppView, { title: string; subtitle: string }> = {
+  dashboard: {
+    title: 'Dashboard Clínico',
+    subtitle: 'Visão geral dos pacientes, progresso, últimas sessões e áudios registrados.',
+  },
   patients: {
     title: 'Meus Pacientes',
     subtitle: 'Gerencie e acompanhe o progresso clínico dos pacientes ativos.',
@@ -76,6 +85,25 @@ const viewTitles: Record<AppView, { title: string; subtitle: string }> = {
   },
 }
 
+type SoundStatus = 'idle' | 'recording' | 'detected' | 'silent' | 'unavailable' | 'processing'
+
+function normalizeText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(String(reader.result))
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
 function App() {
   const [professional, setProfessional] = useStoredState<Professional | null>('roxy.professional', null)
   const [patients, setPatients] = useStoredState<Patient[]>('roxy.patients', samplePatients)
@@ -83,7 +111,7 @@ function App() {
   const [showSplash, setShowSplash] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authMode, setAuthMode] = useState<'landing' | 'email' | 'create'>(professional ? 'landing' : 'create')
-  const [view, setView] = useState<AppView>('patients')
+  const [view, setView] = useState<AppView>('dashboard')
   const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id ?? '')
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null)
   const [deleteMode, setDeleteMode] = useState(false)
@@ -91,10 +119,20 @@ function App() {
   const [selectedExerciseId, setSelectedExerciseId] = useState<ExerciseId>('repete-comigo')
   const [practiceQueue, setPracticeQueue] = useState<Exercise['prompts']>([])
   const [attemptLog, setAttemptLog] = useState<Record<string, PromptAttempt>>({})
-  const [soundStatus, setSoundStatus] = useState<'idle' | 'listening' | 'detected' | 'silent' | 'unavailable'>('idle')
+  const [soundStatus, setSoundStatus] = useState<SoundStatus>('idle')
+  const [recordedClips, setRecordedClips] = useState<Record<string, AudioClip>>({})
+  const [recordingPromptId, setRecordingPromptId] = useState<string | null>(null)
   const [lastSession, setLastSession] = useState<SessionRecord | null>(null)
   const [exporting, setExporting] = useState(false)
   const reportRef = useRef<HTMLDivElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recordingTimeoutRef = useRef<number | null>(null)
+  const recordingStartedAtRef = useRef(0)
+  const recordingPeakRef = useRef(0)
+  const recordingStreamRef = useRef<MediaStream | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
 
   const selectedPatient = useMemo(
     () => patients.find((patient) => patient.id === selectedPatientId) ?? patients[0],
@@ -102,7 +140,29 @@ function App() {
   )
 
   const selectedExercise = getExercise(selectedExerciseId) ?? exercises[0]
-  const filteredPatients = patients.filter((patient) => patient.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredPatients = useMemo(() => {
+    const term = normalizeText(searchTerm)
+    if (!term) return patients
+
+    return patients.filter((patient) => {
+      const exerciseNames = patient.exercises
+        .map((exerciseId) => getExercise(exerciseId)?.name ?? exerciseId)
+        .join(' ')
+      const searchable = [
+        patient.name,
+        patient.id,
+        patient.birthDate,
+        patient.guardians,
+        patient.phone,
+        patient.diagnosis,
+        patient.sessionDay,
+        patient.sessionTime,
+        exerciseNames,
+      ].join(' ')
+
+      return normalizeText(searchable).includes(term)
+    })
+  }, [patients, searchTerm])
   const patientSessions = sessions.filter((session) => session.patientId === selectedPatient?.id)
   const earnedBadges = patientSessions.map((session) => session.badge)
 
@@ -110,6 +170,28 @@ function App() {
     const timeoutId = window.setTimeout(() => setShowSplash(false), 4000)
     return () => window.clearTimeout(timeoutId)
   }, [])
+
+  useEffect(() => {
+    return () => stopRecordingTracks()
+  }, [])
+
+  function stopRecordingTracks() {
+    if (recordingTimeoutRef.current) {
+      window.clearTimeout(recordingTimeoutRef.current)
+      recordingTimeoutRef.current = null
+    }
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop())
+    recordingStreamRef.current = null
+
+    void audioContextRef.current?.close()
+    audioContextRef.current = null
+  }
 
   function openPatientForm(patient?: Patient) {
     setEditingPatientId(patient?.id ?? null)
@@ -142,12 +224,21 @@ function App() {
     setSelectedExerciseId(exerciseId)
     setPracticeQueue([...exercise.prompts])
     setAttemptLog({})
+    setRecordedClips({})
+    setRecordingPromptId(null)
     setSoundStatus('idle')
     setView('practice')
   }
 
   async function listenForSound() {
-    setSoundStatus('listening')
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      setSoundStatus('processing')
+      return
+    }
+
+    const currentPrompt = practiceQueue[0]
+    if (!currentPrompt) return
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -155,33 +246,73 @@ function App() {
       const source = audioContext.createMediaStreamSource(stream)
       const analyser = audioContext.createAnalyser()
       const data = new Uint8Array(analyser.fftSize)
-      let peak = 0
+      const recorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported('audio/webm') ? { mimeType: 'audio/webm' } : undefined)
 
       source.connect(analyser)
+      audioChunksRef.current = []
+      recordingPeakRef.current = 0
+      recordingStartedAtRef.current = performance.now()
+      recordingStreamRef.current = stream
+      audioContextRef.current = audioContext
+      mediaRecorderRef.current = recorder
+      setRecordingPromptId(currentPrompt.id)
+      setSoundStatus('recording')
 
-      await new Promise<void>((resolve) => {
-        const startedAt = performance.now()
-        const measure = () => {
-          analyser.getByteTimeDomainData(data)
-          for (const value of data) {
-            peak = Math.max(peak, Math.abs(value - 128) / 128)
-          }
-
-          if (performance.now() - startedAt > 1500) {
-            resolve()
-            return
-          }
-
-          requestAnimationFrame(measure)
+      const measure = () => {
+        analyser.getByteTimeDomainData(data)
+        for (const value of data) {
+          recordingPeakRef.current = Math.max(recordingPeakRef.current, Math.abs(value - 128) / 128)
         }
 
-        measure()
+        animationFrameRef.current = requestAnimationFrame(measure)
+      }
+
+      measure()
+
+      recorder.addEventListener('dataavailable', (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
       })
 
-      stream.getTracks().forEach((track) => track.stop())
-      await audioContext.close()
-      setSoundStatus(peak > 0.03 ? 'detected' : 'silent')
+      recorder.addEventListener('stop', async () => {
+        setSoundStatus('processing')
+        stopRecordingTracks()
+
+        const durationMs = Math.round(performance.now() - recordingStartedAtRef.current)
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+
+        if (blob.size > 0) {
+          const dataUrl = await blobToDataUrl(blob)
+          setRecordedClips((current) => ({
+            ...current,
+            [currentPrompt.id]: {
+              id: createId('AUD'),
+              promptId: currentPrompt.id,
+              promptTitle: currentPrompt.title,
+              dataUrl,
+              mimeType: blob.type,
+              durationMs,
+              createdAt: new Date().toISOString(),
+            },
+          }))
+        }
+
+        mediaRecorderRef.current = null
+        setRecordingPromptId(null)
+        setSoundStatus(recordingPeakRef.current > 0.03 ? 'detected' : 'silent')
+      })
+
+      recorder.start()
+      recordingTimeoutRef.current = window.setTimeout(() => {
+        if (recorder.state === 'recording') {
+          recorder.stop()
+        }
+      }, 4500)
     } catch {
+      stopRecordingTracks()
+      mediaRecorderRef.current = null
+      setRecordingPromptId(null)
       setSoundStatus('unavailable')
     }
   }
@@ -230,9 +361,13 @@ function App() {
       date: now,
       score: selectedExercise.prompts.length,
       total: selectedExercise.prompts.length,
-      notes: 'Exercício concluído com avaliação manual. Áudio usado apenas durante a sessão.',
+      notes: 'Exercício concluído com avaliação manual. Áudios salvos no histórico da sessão.',
       badge: { ...badge, earnedAt: now },
       attempts: selectedExercise.prompts.map((prompt) => finalLog[prompt.id]),
+      audioClips: selectedExercise.prompts.flatMap((prompt) => {
+        const clip = recordedClips[prompt.id]
+        return clip ? [clip] : []
+      }),
     }
 
     setLastSession(record)
@@ -292,16 +427,35 @@ function App() {
   return (
     <main className="app-shell">
       <Sidebar
+        patients={patients}
         professional={professional}
+        selectedPatientId={selectedPatient?.id ?? ''}
         view={view}
         onNavigate={(nextView) => {
           setDeleteMode(false)
           setView(nextView)
         }}
+        onPatientChange={setSelectedPatientId}
         onLogout={() => setIsAuthenticated(false)}
       />
       <section className="workspace">
         <Header view={view} />
+
+        {view === 'dashboard' && (
+          <DashboardView
+            patients={patients}
+            selectedPatientId={selectedPatient?.id ?? ''}
+            sessions={sessions}
+            onOpenPatient={(patient) => {
+              setSelectedPatientId(patient.id)
+              setView('reports')
+            }}
+            onStartExercise={(patient, exerciseId) => {
+              setSelectedPatientId(patient.id)
+              startPractice(exerciseId)
+            }}
+          />
+        )}
 
         {view === 'patients' && (
           <PatientsView
@@ -339,6 +493,8 @@ function App() {
             exercise={selectedExercise}
             patient={selectedPatient}
             queue={practiceQueue}
+            recordedClips={recordedClips}
+            recordingPromptId={recordingPromptId}
             soundStatus={soundStatus}
             onBack={() => setView('exercises')}
             onListen={listenForSound}
@@ -525,14 +681,18 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
 }
 
 interface SidebarProps {
+  patients: Patient[]
   professional: Professional | null
+  selectedPatientId: string
   view: AppView
   onNavigate: (view: AppView) => void
+  onPatientChange: (patientId: string) => void
   onLogout: () => void
 }
 
-function Sidebar({ professional, view, onNavigate, onLogout }: SidebarProps) {
+function Sidebar({ patients, professional, selectedPatientId, view, onNavigate, onPatientChange, onLogout }: SidebarProps) {
   const items: Array<{ label: string; view: AppView; icon: typeof UsersRound }> = [
+    { label: 'Dashboard', view: 'dashboard', icon: BarChart3 },
     { label: 'Meus Pacientes', view: 'patients', icon: UsersRound },
     { label: 'Exercícios', view: 'exercises', icon: Gamepad2 },
     { label: 'Relatórios', view: 'reports', icon: FileText },
@@ -557,6 +717,21 @@ function Sidebar({ professional, view, onNavigate, onLogout }: SidebarProps) {
           )
         })}
       </nav>
+
+      <label className="patient-switcher">
+        <span>Paciente ativo</span>
+        <select value={selectedPatientId} onChange={(event) => onPatientChange(event.target.value)} disabled={!patients.length}>
+          {patients.length ? (
+            patients.map((patient) => (
+              <option value={patient.id} key={patient.id}>
+                {patient.name}
+              </option>
+            ))
+          ) : (
+            <option>Nenhum paciente</option>
+          )}
+        </select>
+      </label>
 
       <div className="professional-card">
         <span className="avatar-dot" />
@@ -584,6 +759,136 @@ function Header({ view }: HeaderProps) {
         <p>{viewTitles[view].subtitle}</p>
       </div>
     </header>
+  )
+}
+
+interface DashboardViewProps {
+  patients: Patient[]
+  selectedPatientId: string
+  sessions: SessionRecord[]
+  onOpenPatient: (patient: Patient) => void
+  onStartExercise: (patient: Patient, exerciseId: ExerciseId) => void
+}
+
+function DashboardView({ patients, selectedPatientId, sessions, onOpenPatient, onStartExercise }: DashboardViewProps) {
+  const totalAudioClips = sessions.reduce((sum, session) => sum + (session.audioClips?.length ?? 0), 0)
+  const totalBadges = sessions.length
+  const averageProgress = sessions.length
+    ? Math.round((sessions.reduce((sum, session) => sum + session.score / session.total, 0) / sessions.length) * 100)
+    : 0
+
+  const patientStats = patients.map((patient) => {
+    const patientSessions = sessions.filter((session) => session.patientId === patient.id)
+    const progress = patientSessions.length
+      ? Math.round((patientSessions.reduce((sum, session) => sum + session.score / session.total, 0) / patientSessions.length) * 100)
+      : 0
+    const lastSession = patientSessions[0]
+    const nextExercise = getExercise(patient.exercises[0]) ?? exercises[0]
+
+    return {
+      patient,
+      progress,
+      lastSession,
+      nextExercise,
+      audioCount: patientSessions.reduce((sum, session) => sum + (session.audioClips?.length ?? 0), 0),
+      sessionCount: patientSessions.length,
+    }
+  })
+
+  const latestSessions = sessions.slice(0, 5)
+
+  return (
+    <section className="dashboard-shell">
+      <div className="dashboard-stats">
+        <article className="stat-card panel">
+          <UsersRound size={28} />
+          <span>Pacientes</span>
+          <strong>{patients.length}</strong>
+        </article>
+        <article className="stat-card panel">
+          <Activity size={28} />
+          <span>Evolução média</span>
+          <strong>{averageProgress}%</strong>
+        </article>
+        <article className="stat-card panel">
+          <Award size={28} />
+          <span>Cartas entregues</span>
+          <strong>{totalBadges}</strong>
+        </article>
+        <article className="stat-card panel">
+          <Radio size={28} />
+          <span>Áudios salvos</span>
+          <strong>{totalAudioClips}</strong>
+        </article>
+      </div>
+
+      <div className="dashboard-grid">
+        <article className="panel dashboard-patients">
+          <div className="panel-title-row">
+            <div>
+              <span className="section-kicker">Acompanhamento</span>
+              <h2>Progresso dos pacientes</h2>
+            </div>
+          </div>
+
+          <div className="dashboard-patient-list">
+            {patientStats.map(({ patient, progress, lastSession, nextExercise, audioCount, sessionCount }) => (
+              <div className={patient.id === selectedPatientId ? 'dashboard-patient active' : 'dashboard-patient'} key={patient.id}>
+                <div className="patient-avatar">
+                  <UserRound size={24} />
+                </div>
+                <div className="dashboard-patient-copy">
+                  <button onClick={() => onOpenPatient(patient)}>{patient.name}</button>
+                  <span>{lastSession ? `Última sessão: ${lastSession.exerciseName}` : 'Ainda sem sessão registrada'}</span>
+                  <ProgressLine label="Progresso" value={progress} color="#8f79ff" />
+                </div>
+                <div className="dashboard-patient-meta">
+                  <span>{sessionCount} sessões</span>
+                  <span>{audioCount} áudios</span>
+                  <button className="pill-button mini" onClick={() => onStartExercise(patient, nextExercise.id)}>
+                    <PlayCircle size={15} /> Praticar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <aside className="dashboard-side">
+          <article className="panel">
+            <span className="section-kicker">Sessões recentes</span>
+            <h2>Últimos atendimentos</h2>
+            <div className="recent-session-list">
+              {latestSessions.length ? (
+                latestSessions.map((session) => {
+                  const patient = patients.find((item) => item.id === session.patientId)
+                  return (
+                    <div className="recent-session" key={session.id}>
+                      <div>
+                        <strong>{patient?.name ?? 'Paciente removido'}</strong>
+                        <span>{new Date(session.date).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                      <p>{session.exerciseName}</p>
+                      <small>
+                        {session.score}/{session.total} - {session.badge.name}
+                      </small>
+                    </div>
+                  )
+                })
+              ) : (
+                <p className="muted">As últimas sessões aparecem aqui quando os exercícios forem concluídos.</p>
+              )}
+            </div>
+          </article>
+
+          <article className="panel">
+            <span className="section-kicker">Áudios</span>
+            <h2>Gravações para revisar</h2>
+            <AudioClipList sessions={latestSessions} patients={patients} compact />
+          </article>
+        </aside>
+      </div>
+    </section>
   )
 }
 
@@ -624,26 +929,34 @@ function PatientsView({
       </div>
 
       <div className="patient-list">
-        {filteredPatients.map((patient) => (
-          <article className="patient-row" key={patient.id}>
-            <div className="patient-avatar">
-              <UserRound size={25} />
-            </div>
-            <div>
-              <h2>{patient.name}</h2>
-              <p>ID do Paciente: #{patient.id}</p>
-            </div>
-            {deleteMode ? (
-              <button className="delete-icon" aria-label={`Excluir ${patient.name}`} onClick={() => onDelete(patient.id)}>
-                <Trash2 size={20} />
-              </button>
-            ) : (
-              <button className="next-icon" aria-label={`Abrir prontuário de ${patient.name}`} onClick={() => onOpen(patient)}>
-                <ArrowRight size={24} />
-              </button>
-            )}
-          </article>
-        ))}
+        {filteredPatients.length ? (
+          filteredPatients.map((patient) => (
+            <article className="patient-row" key={patient.id}>
+              <div className="patient-avatar">
+                <UserRound size={25} />
+              </div>
+              <div>
+                <h2>{patient.name}</h2>
+                <p>ID do Paciente: #{patient.id}</p>
+              </div>
+              {deleteMode ? (
+                <button className="delete-icon" aria-label={`Excluir ${patient.name}`} onClick={() => onDelete(patient.id)}>
+                  <Trash2 size={20} />
+                </button>
+              ) : (
+                <button className="next-icon" aria-label={`Abrir prontuário de ${patient.name}`} onClick={() => onOpen(patient)}>
+                  <ArrowRight size={24} />
+                </button>
+              )}
+            </article>
+          ))
+        ) : (
+          <section className="panel empty-state search-empty">
+            <Search size={36} />
+            <h2>Nenhum paciente encontrado</h2>
+            <p>Revise o nome, ID, responsável, telefone, diagnóstico ou exercício pesquisado.</p>
+          </section>
+        )}
       </div>
     </section>
   )
@@ -830,18 +1143,32 @@ interface PracticeViewProps {
   exercise: Exercise
   patient?: Patient
   queue: Exercise['prompts']
-  soundStatus: 'idle' | 'listening' | 'detected' | 'silent' | 'unavailable'
+  recordedClips: Record<string, AudioClip>
+  recordingPromptId: string | null
+  soundStatus: SoundStatus
   onBack: () => void
   onListen: () => void
   onRate: (rating: Rating) => void
 }
 
-function PracticeView({ exercise, patient, queue, soundStatus, onBack, onListen, onRate }: PracticeViewProps) {
+function PracticeView({
+  exercise,
+  patient,
+  queue,
+  recordedClips,
+  recordingPromptId,
+  soundStatus,
+  onBack,
+  onListen,
+  onRate,
+}: PracticeViewProps) {
   const currentPrompt = queue[0]
   const canRate = soundStatus === 'detected' || soundStatus === 'unavailable'
   const currentIndex = exercise.prompts.length - queue.length + 1
   const completed = exercise.prompts.length - queue.length
   const progressPercent = (completed / exercise.prompts.length) * 100
+  const currentClip = currentPrompt ? recordedClips[currentPrompt.id] : undefined
+  const isRecordingCurrent = soundStatus === 'recording' && recordingPromptId === currentPrompt?.id
 
   if (!currentPrompt) {
     return (
@@ -881,17 +1208,29 @@ function PracticeView({ exercise, patient, queue, soundStatus, onBack, onListen,
             {currentPrompt.helper && <small>{currentPrompt.helper}</small>}
           </div>
 
-          <button className={`mic-button ${soundStatus}`} onClick={onListen} disabled={soundStatus === 'listening'}>
-            <Mic size={26} />
+          <button className={`mic-button ${soundStatus}`} onClick={onListen} disabled={soundStatus === 'processing'}>
+            {isRecordingCurrent ? <Square size={24} /> : <Mic size={26} />}
           </button>
 
           <p className="sound-feedback">
-            {soundStatus === 'idle' && 'Aperte o microfone para detectar a fala da criança.'}
-            {soundStatus === 'listening' && 'Escutando por alguns segundos...'}
-            {soundStatus === 'detected' && 'Som detectado. Avaliação liberada.'}
+            {soundStatus === 'idle' && 'Aperte o microfone para gravar a resposta da criança.'}
+            {soundStatus === 'recording' && 'Gravando... toque novamente para parar ou aguarde alguns segundos.'}
+            {soundStatus === 'processing' && 'Salvando áudio da resposta...'}
+            {soundStatus === 'detected' && 'Áudio salvo e som detectado. Avaliação liberada.'}
             {soundStatus === 'silent' && 'Nenhum som detectado. Tente o microfone novamente.'}
             {soundStatus === 'unavailable' && 'Microfone indisponível. Avaliação manual liberada.'}
           </p>
+
+          {currentClip && (
+            <div className="inline-audio">
+              <Radio size={17} />
+              <div>
+                <strong>Áudio deste card salvo</strong>
+                <small>{Math.max(1, Math.round(currentClip.durationMs / 1000))}s de gravação</small>
+              </div>
+              <audio controls src={currentClip.dataUrl} />
+            </div>
+          )}
 
           <div className="rating-actions">
             <button className="rate-ok" disabled={!canRate} onClick={() => onRate('ok')} aria-label="Avaliação correta">
@@ -961,6 +1300,7 @@ function ResultView({ record, onPracticeAgain, onReports }: ResultViewProps) {
             {record.score}/{record.total}
           </strong>
           <p>Excelente participação. A carta já ficou salva no prontuário do paciente.</p>
+          {(record.audioClips?.length ?? 0) > 0 && <p>{record.audioClips?.length} áudio(s) salvo(s) para revisão clínica.</p>}
           <div className="result-actions">
             <button className="ghost-button" onClick={onPracticeAgain}>
               Repetir exercício
@@ -1074,6 +1414,9 @@ function ReportsView({ badges, exporting, onEditPatient, onExport, patient, refN
                     <small>
                       Resultado {session.score}/{session.total} - carta {session.badge.name}
                     </small>
+                    {(session.audioClips?.length ?? 0) > 0 && (
+                      <AudioClipList sessions={[session]} patients={patient ? [patient] : []} compact />
+                    )}
                   </div>
                 ))
               ) : (
@@ -1084,6 +1427,43 @@ function ReportsView({ badges, exporting, onEditPatient, onExport, patient, refN
         </div>
       </div>
     </section>
+  )
+}
+
+interface AudioClipListProps {
+  compact?: boolean
+  patients: Patient[]
+  sessions: SessionRecord[]
+}
+
+function AudioClipList({ compact = false, patients, sessions }: AudioClipListProps) {
+  const clips = sessions.flatMap((session) =>
+    (session.audioClips ?? []).map((clip) => ({
+      clip,
+      patient: patients.find((patient) => patient.id === session.patientId),
+      session,
+    })),
+  )
+
+  if (!clips.length) {
+    return <p className="muted">Nenhum áudio salvo ainda.</p>
+  }
+
+  return (
+    <div className={compact ? 'audio-list compact' : 'audio-list'}>
+      {clips.map(({ clip, patient, session }) => (
+        <div className="audio-item" key={clip.id}>
+          <div>
+            <strong>{clip.promptTitle}</strong>
+            <span>
+              {patient?.name ? `${patient.name} - ` : ''}
+              {session.exerciseName} - {new Date(clip.createdAt).toLocaleDateString('pt-BR')}
+            </span>
+          </div>
+          <audio controls src={clip.dataUrl} />
+        </div>
+      ))}
+    </div>
   )
 }
 

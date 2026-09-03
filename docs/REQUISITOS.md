@@ -21,7 +21,7 @@ Participa apenas durante os exercicios, acompanhando os cards, repetindo palavra
 3. Cadastra ou seleciona um paciente.
 4. Escolhe um exercicio.
 5. Conduz a pratica com a crianca.
-6. Usa o microfone apenas como apoio visual/deteccao de som durante a sessao.
+6. Usa o microfone para gravar a resposta da crianca e detectar som durante a sessao.
 7. Avalia manualmente cada card como OK, repetir ou rever depois.
 8. Ao concluir, o paciente recebe uma carta colecionavel do mascote Roxy.
 9. O resultado fica salvo no prontuario em Relatorios.
@@ -95,7 +95,36 @@ O prontuario deve apresentar:
 - Informacoes clinicas.
 - Historico de sessoes.
 - Emblemas/cartas colecionadas.
+- Audios gravados durante os exercicios para revisao posterior.
 - Exportacao em PDF.
+
+## Dashboard da Fonoaudiologa
+
+O dashboard deve permitir que a fonoaudiologa visualize:
+
+- Total de pacientes.
+- Evolucao media.
+- Cartas entregues.
+- Audios salvos.
+- Progresso individual de cada paciente.
+- Ultimas sessoes realizadas.
+- Atalhos para abrir prontuario e iniciar exercicio.
+
+## Menu e Navegacao
+
+O menu deve conter a troca de paciente ativo, permitindo alternar entre pacientes sem precisar voltar para a tela de listagem.
+
+## Busca
+
+A busca da lista de pacientes deve localizar resultados por:
+
+- Nome.
+- ID.
+- Responsaveis.
+- Telefone.
+- Diagnostico ou queixa.
+- Dia e horario de sessao.
+- Exercicios indicados.
 
 ## Requisitos de Privacidade
 

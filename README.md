@@ -9,12 +9,15 @@ O projeto foi inspirado no prototipo visual da Roxy, mantendo a identidade com t
 - Login e cadastro simples para a fonoaudiologa.
 - Cadastro de profissional com nome, e-mail, CRFa e telefone.
 - Cadastro de pacientes com dados clinicos e agenda de sessoes.
+- Dashboard clinico com visao geral de todos os pacientes.
+- Troca de paciente ativo diretamente pelo menu lateral.
 - Lista de pacientes com busca, abertura de prontuario e modo de exclusao.
+- Busca por nome, ID, responsaveis, telefone, diagnostico, agenda e exercicios.
 - Exercicios organizados em cards: Repete Comigo, Rimas Divertidas, Monte Historias e Sons e Mais.
-- Fluxo de pratica com microfone visual, deteccao local de som durante a sessao e avaliacao manual pela fonoaudiologa.
+- Fluxo de pratica com gravacao de microfone, deteccao local de som e avaliacao manual pela fonoaudiologa.
 - Repeticao automatica de cards marcados como amarelo ou vermelho ate receberem OK.
 - Resultado final com carta/figurinha surpresa do mascote Roxy.
-- Prontuario em Relatorios com historico, progresso, emblemas colecionaveis e exportacao em PDF.
+- Prontuario em Relatorios com historico, progresso, emblemas colecionaveis, audios das sessoes e exportacao em PDF.
 - Persistencia local via `localStorage`.
 - Estrutura de banco preparada para Supabase.
 
@@ -91,13 +94,20 @@ pnpm dev
 http://localhost:5173/
 ```
 
-Se aparecer erro dizendo que `pnpm` nao existe, instale com:
+Se aparecer erro dizendo que `pnpm` nao existe, ative pelo Corepack:
+
+```bash
+corepack enable
+corepack prepare pnpm@11.19.0 --activate
+```
+
+Ou instale pelo npm:
 
 ```bash
 npm install -g pnpm
 ```
 
-Se o Cursor abrir a pasta errada, os comandos nao vao encontrar o `package.json`. O arquivo `package.json` precisa aparecer na raiz da aba Explorer do Cursor.
+O arquivo `package.json` precisa aparecer na raiz da aba Explorer do Cursor.
 
 ## Scripts
 
@@ -168,3 +178,7 @@ roxy-web/
 ## Privacidade
 
 Este projeto lida com dados clinicos e infantis. Antes de uso real, e necessario finalizar autenticacao, permissoes por usuario, politicas de acesso no banco, termos de uso, politica de privacidade, exclusao de dados, backups e revisao de conformidade com LGPD.
+
+## Status
+
+Versao funcional de apresentacao/prototipo avancado, com telas responsivas, dashboard clinico, fluxo de atendimento, gravacao de audio, cartas colecionaveis e exportacao de prontuario em PDF.

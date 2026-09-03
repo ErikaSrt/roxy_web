@@ -33,6 +33,7 @@ create table if not exists session_records (
   badge_name text not null,
   badge_image text not null,
   attempts jsonb not null default '[]'::jsonb,
+  audio_clips jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
 

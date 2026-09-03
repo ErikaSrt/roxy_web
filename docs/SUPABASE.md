@@ -59,6 +59,7 @@ Armazena resultados de exercicios:
 - `badge_name`
 - `badge_image`
 - `attempts`
+- `audio_clips`
 - `created_at`
 
 ## Como Criar as Tabelas
