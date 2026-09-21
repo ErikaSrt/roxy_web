@@ -71,38 +71,7 @@ Abra o endereco exibido no terminal, normalmente:
 http://127.0.0.1:5173/
 ```
 
-## Como Rodar no Cursor
-
-1. Abra o Cursor.
-2. Clique em `File > Open Folder`.
-3. Selecione exatamente a pasta:
-
-```text
-C:\Users\sarto\Documents\Codex\roxy-web
-```
-
-4. Abra o terminal do Cursor.
-5. Rode:
-
-```bash
-pnpm install
-pnpm dev
-```
-
-6. Abra o link exibido no terminal, normalmente:
-
-```text
-http://localhost:5173/
-```
-
-Se aparecer erro dizendo que `pnpm` nao existe, ative pelo Corepack:
-
-```bash
-corepack enable
-corepack prepare pnpm@11.19.0 --activate
-```
-
-Ou instale pelo npm:
+ instale pelo npm:
 
 ```bash
 npm install -g pnpm
