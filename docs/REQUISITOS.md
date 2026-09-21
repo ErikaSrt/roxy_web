@@ -32,7 +32,7 @@
 | RF12 | Autenticacao real e isolamento dos dados por profissional | Planejado |
 | RF13 | Persistencia remota de pacientes, sessoes e prontuarios | Planejado |
 | RF14 | Armazenamento seguro de audios no Supabase Storage | Planejado |
-| RF15 | Suporte por e-mail, apresentacao do Roxy e contato por WhatsApp | Planejado |
+| RF15 | Suporte por e-mail, apresentacao do Roxy e contato por WhatsApp | Implementado |
 
 ## Objetivo
 

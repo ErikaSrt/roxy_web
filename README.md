@@ -21,6 +21,7 @@ O projeto foi inspirado no prototipo visual da Roxy, mantendo a identidade com t
 - Prontuario em Relatorios com historico, progresso, emblemas colecionaveis, audios das sessoes e exportacao em PDF.
 - Persistencia local via `localStorage`.
 - Estrutura de banco preparada para Supabase.
+- Tela inicial com apresentacao da Roxy, suporte por e-mail e contato com consultor via WhatsApp.
 
 ## Stack
 
@@ -112,9 +113,13 @@ O app funciona em modo local sem Supabase. Para conectar ao Supabase, preencha:
 ```env
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
+VITE_SUPPORT_EMAIL=
+VITE_CONSULTANT_WHATSAPP=
 ```
 
 Use o arquivo `supabase/schema.sql` para criar as tabelas iniciais.
+
+Em `VITE_CONSULTANT_WHATSAPP`, informe o numero com codigo do pais e DDD, usando somente digitos. Exemplo: `5511999990000`.
 
 ## Estrutura
 

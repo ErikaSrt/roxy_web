@@ -14,7 +14,9 @@ import {
   Gamepad2,
   Heart,
   Images,
+  Info,
   LogOut,
+  Mail,
   Mic,
   MessageCircle,
   PlayCircle,
@@ -561,18 +563,42 @@ interface AuthScreenProps {
 
 function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: AuthScreenProps) {
   const [profile, setProfile] = useState<Professional>(professional ?? emptyProfessional)
+  const [contactDialog, setContactDialog] = useState<'support' | 'about' | 'consultant' | null>(null)
+
+  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() ?? ''
+  const consultantPhone = (import.meta.env.VITE_CONSULTANT_WHATSAPP ?? '').replace(/\D/g, '')
+  const consultantMessage = encodeURIComponent(
+    'Olá! Conheci a Roxy e gostaria de conversar com um consultor.',
+  )
 
   function submitProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     onCreate(profile)
   }
 
+  useEffect(() => {
+    if (!contactDialog) return
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setContactDialog(null)
+    }
+
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [contactDialog])
+
   return (
     <main className="auth-page">
       <nav className="auth-nav">
-        <button>Suporte</button>
-        <button>Sobre o Roxy</button>
-        <button className="pill-button">Falar com Consultor</button>
+        <button type="button" onClick={() => setContactDialog('support')}>
+          <Mail size={17} /> Suporte
+        </button>
+        <button type="button" onClick={() => setContactDialog('about')}>
+          <Info size={17} /> Sobre o Roxy
+        </button>
+        <button className="pill-button" type="button" onClick={() => setContactDialog('consultant')}>
+          <MessageCircle size={17} /> Falar com Consultor
+        </button>
       </nav>
 
       <section className="auth-grid">
@@ -686,6 +712,91 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
           </p>
         </div>
       </section>
+
+      {contactDialog && (
+        <div className="contact-dialog-backdrop" role="presentation" onMouseDown={() => setContactDialog(null)}>
+          <section
+            aria-labelledby="contact-dialog-title"
+            aria-modal="true"
+            className="contact-dialog"
+            role="dialog"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              aria-label="Fechar"
+              className="contact-dialog-close"
+              type="button"
+              onClick={() => setContactDialog(null)}
+            >
+              <X size={20} />
+            </button>
+
+            {contactDialog === 'support' && (
+              <>
+                <span className="contact-dialog-icon"><Mail size={26} /></span>
+                <p className="contact-dialog-eyebrow">Canal de atendimento</p>
+                <h2 id="contact-dialog-title">Suporte Roxy</h2>
+                <p>
+                  Envie sua dúvida, dificuldade de acesso ou sugestão. Nossa equipe responderá pelo
+                  mesmo e-mail usado no contato.
+                </p>
+                {supportEmail ? (
+                  <a
+                    className="primary-button contact-dialog-action"
+                    href={`mailto:${supportEmail}?subject=${encodeURIComponent('Suporte Roxy')}`}
+                  >
+                    <Mail size={18} /> Enviar e-mail
+                  </a>
+                ) : (
+                  <p className="contact-unavailable">O canal de suporte será disponibilizado em breve.</p>
+                )}
+              </>
+            )}
+
+            {contactDialog === 'about' && (
+              <>
+                <span className="contact-dialog-icon"><Sparkles size={26} /></span>
+                <p className="contact-dialog-eyebrow">Fonoaudiologia infantil</p>
+                <h2 id="contact-dialog-title">Sobre o Roxy</h2>
+                <p>
+                  Roxy é uma plataforma web responsiva criada para apoiar consultas de fonoaudiologia
+                  infantil. Ela reúne pacientes, exercícios guiados, evolução clínica, áudios de sessão
+                  e cartas colecionáveis em uma experiência acolhedora para a criança e prática para a
+                  profissional.
+                </p>
+                <p>
+                  O projeto foi idealizado e desenvolvido por Erika como trabalho de conclusão de curso,
+                  unindo tecnologia, cuidado clínico e uma forma mais leve de acompanhar cada conquista.
+                </p>
+              </>
+            )}
+
+            {contactDialog === 'consultant' && (
+              <>
+                <span className="contact-dialog-icon"><MessageCircle size={26} /></span>
+                <p className="contact-dialog-eyebrow">Atendimento personalizado</p>
+                <h2 id="contact-dialog-title">Falar com Consultor</h2>
+                <p>
+                  Converse pelo WhatsApp para tirar dúvidas sobre a plataforma e entender como a Roxy
+                  pode apoiar sua rotina de atendimentos.
+                </p>
+                {consultantPhone ? (
+                  <a
+                    className="primary-button contact-dialog-action whatsapp-action"
+                    href={`https://wa.me/${consultantPhone}?text=${consultantMessage}`}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <MessageCircle size={18} /> Abrir WhatsApp
+                  </a>
+                ) : (
+                  <p className="contact-unavailable">O atendimento pelo WhatsApp estará disponível em breve.</p>
+                )}
+              </>
+            )}
+          </section>
+        </div>
+      )}
     </main>
   )
 }
