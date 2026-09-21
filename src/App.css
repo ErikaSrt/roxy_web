@@ -1444,21 +1444,14 @@ textarea {
 
 .brand-stage img {
   filter: drop-shadow(0 24px 24px rgba(67, 40, 97, 0.16));
-  max-width: 380px;
-  width: 70%;
-}
-
-.brand-stage h1 {
-  font-size: 64px;
-  letter-spacing: 0;
-  margin: 8px 0;
-  text-transform: uppercase;
+  max-width: 500px;
+  width: 100%;
 }
 
 .brand-stage p {
   color: #6a5d78;
   font-size: 20px;
-  margin: 0 auto;
+  margin: 14px auto 0;
   max-width: 460px;
 }
 
@@ -1715,7 +1708,7 @@ textarea {
   }
 
   .brand-stage img {
-    max-width: 180px;
+    max-width: 300px;
   }
 
   .auth-card {
@@ -1892,12 +1885,9 @@ textarea {
     margin-top: 24px;
   }
 
-  .brand-stage h1 {
-    font-size: 46px;
-  }
-
   .brand-stage p {
     font-size: 16px;
+    margin-top: 8px;
   }
 
   .auth-card {

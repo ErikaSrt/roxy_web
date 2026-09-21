@@ -604,7 +604,6 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
       <section className="auth-grid">
         <div className="brand-stage">
           <img src={ROXY_LOGO} alt="Logo Roxy" />
-          <h1>Roxy</h1>
           <p>Fonoaudiologia infantil com acompanhamento leve, clínico e recompensador.</p>
         </div>
 
