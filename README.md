@@ -13,9 +13,10 @@ O projeto foi inspirado no prototipo visual da Roxy, mantendo a identidade com t
 - Troca de paciente ativo diretamente pelo menu lateral.
 - Lista de pacientes com busca, abertura de prontuario e modo de exclusao.
 - Busca por nome, ID, responsaveis, telefone, diagnostico, agenda e exercicios.
-- Exercicios organizados em cards: Repete Comigo, Rimas Divertidas, Monte Historias e Sons e Mais.
+- Oito exercicios organizados em cards, com mecanicas de fala, escolha, narrativa, memoria auditiva e respiracao.
 - Fluxo de pratica com gravacao de microfone, deteccao local de som e avaliacao manual pela fonoaudiologa.
-- Repeticao automatica de cards marcados como amarelo ou vermelho ate receberem OK.
+- Avaliacao manual como correta, incorreta ou parcial, sempre avancando ao proximo card.
+- Registro de pontuacao real, percentual e itens que precisam ser retomados.
 - Resultado final com carta/figurinha surpresa do mascote Roxy.
 - Prontuario em Relatorios com historico, progresso, emblemas colecionaveis, audios das sessoes e exportacao em PDF.
 - Persistencia local via `localStorage`.
@@ -174,6 +175,7 @@ roxy-web/
 - [Arquitetura tecnica](docs/ARQUITETURA.md)
 - [Banco de dados Supabase](docs/SUPABASE.md)
 - [Guia para GitHub](docs/GITHUB.md)
+- [Planejamento Scrum para o Trello](docs/TRELLO_SCRUM.md)
 
 ## Privacidade
 

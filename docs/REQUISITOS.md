@@ -22,7 +22,7 @@ Participa apenas durante os exercicios, acompanhando os cards, repetindo palavra
 4. Escolhe um exercicio.
 5. Conduz a pratica com a crianca.
 6. Usa o microfone para gravar a resposta da crianca e detectar som durante a sessao.
-7. Avalia manualmente cada card como OK, repetir ou rever depois.
+7. Avalia manualmente cada card como correto, incorreto ou parcial.
 8. Ao concluir, o paciente recebe uma carta colecionavel do mascote Roxy.
 9. O resultado fica salvo no prontuario em Relatorios.
 10. A fonoaudiologa pode exportar o prontuario em PDF.
@@ -67,15 +67,31 @@ O sistema apresenta palavras como pistas e a crianca monta uma historia oral com
 
 A crianca identifica sons, ritmos e pistas auditivas com apoio da terapeuta. A avaliacao tambem e manual.
 
+### Nomeie a Imagem
+
+A crianca nomeia palavras apresentadas e amplia a resposta com caracteristicas, funcoes ou frases.
+
+### Complete a Frase
+
+A crianca escolhe entre alternativas para completar corretamente uma frase ou situacao.
+
+### Sequencia Sonora
+
+A crianca escuta e reproduz sequencias curtas de silabas, trabalhando memoria auditiva e ritmo.
+
+### Sopro e Respiracao
+
+A fonoaudiologa conduz ciclos de inspiracao e sopro para trabalhar coordenacao respiratoria.
+
 ## Avaliacao
 
 Cada card pode receber:
 
-- OK: resposta aceita.
-- Repetir: volta para o final da fila.
-- Rever depois: tambem volta para o final da fila.
+- Correto: resposta aceita e contabilizada como acerto.
+- Incorreto: resposta registrada para retomada clinica.
+- Parcial: desempenho intermediario registrado para acompanhamento.
 
-O exercicio termina quando todos os cards recebem OK.
+Todas as avaliacoes avancam para o proximo card. Ao final, o sistema calcula a pontuacao e o percentual real. Quando o resultado for menor que 100%, o prontuario informa que a conclusao foi parcial e lista os itens que precisam ser retomados.
 
 ## Emblemas e Figurinhas
 
