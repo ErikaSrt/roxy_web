@@ -570,6 +570,7 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
   const consultantMessage = encodeURIComponent(
     'Olá! Conheci a Roxy e gostaria de conversar com um consultor.',
   )
+  const supportGmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(supportEmail)}&su=${encodeURIComponent('Suporte Roxy')}`
 
   function submitProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -740,12 +741,19 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
                   mesmo e-mail usado no contato.
                 </p>
                 {supportEmail ? (
-                  <a
-                    className="primary-button contact-dialog-action"
-                    href={`mailto:${supportEmail}?subject=${encodeURIComponent('Suporte Roxy')}`}
-                  >
-                    <Mail size={18} /> Enviar e-mail
-                  </a>
+                  <>
+                    <a className="contact-email" href={`mailto:${supportEmail}`}>
+                      {supportEmail}
+                    </a>
+                    <a
+                      className="primary-button contact-dialog-action"
+                      href={supportGmailUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <Mail size={18} /> Enviar pelo Gmail
+                    </a>
+                  </>
                 ) : (
                   <p className="contact-unavailable">O canal de suporte será disponibilizado em breve.</p>
                 )}

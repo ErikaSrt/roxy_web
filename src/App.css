@@ -1602,6 +1602,18 @@ textarea {
   text-decoration: none;
 }
 
+.contact-email {
+  color: #6d1fac;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  width: fit-content;
+}
+
+.contact-email:hover,
+.contact-email:focus-visible {
+  color: #358fd1;
+}
+
 .whatsapp-action {
   background: linear-gradient(135deg, #25a866, #178c53);
 }
