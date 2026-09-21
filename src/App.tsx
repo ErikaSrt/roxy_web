@@ -565,8 +565,8 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
   const [profile, setProfile] = useState<Professional>(professional ?? emptyProfessional)
   const [contactDialog, setContactDialog] = useState<'support' | 'about' | 'consultant' | null>(null)
 
-  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() ?? ''
-  const consultantPhone = (import.meta.env.VITE_CONSULTANT_WHATSAPP ?? '').replace(/\D/g, '')
+  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'suporteroxy256@gmail.com'
+  const consultantPhone = (import.meta.env.VITE_CONSULTANT_WHATSAPP || '554298104857').replace(/\D/g, '')
   const consultantMessage = encodeURIComponent(
     'Olá! Conheci a Roxy e gostaria de conversar com um consultor.',
   )

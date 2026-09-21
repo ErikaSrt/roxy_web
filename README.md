@@ -113,8 +113,8 @@ O app funciona em modo local sem Supabase. Para conectar ao Supabase, preencha:
 ```env
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
-VITE_SUPPORT_EMAIL=
-VITE_CONSULTANT_WHATSAPP=
+VITE_SUPPORT_EMAIL=suporteroxy256@gmail.com
+VITE_CONSULTANT_WHATSAPP=554298104857
 ```
 
 Use o arquivo `supabase/schema.sql` para criar as tabelas iniciais.
