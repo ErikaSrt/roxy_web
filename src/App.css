@@ -148,24 +148,17 @@
   justify-items: center;
   gap: 4px;
   color: #6d1fac;
-  margin-bottom: 40px;
+  margin-bottom: 28px;
 }
 
 .sidebar-brand img {
-  background: #fff;
-  border: 1px solid #e4ddf7;
-  border-radius: 8px;
-  box-shadow: 0 12px 24px rgba(84, 58, 124, 0.12);
-  height: 92px;
+  height: 112px;
   object-fit: contain;
-  padding: 8px;
-  width: 92px;
+  width: 150px;
 }
 
 .sidebar-brand strong {
-  color: #4b2a56;
-  font-size: 20px;
-  text-transform: uppercase;
+  display: none;
 }
 
 .sidebar-brand span {
@@ -744,7 +737,7 @@ textarea {
 .exercise-board {
   display: grid;
   gap: 18px;
-  max-width: 980px;
+  max-width: 1064px;
 }
 
 .exercise-hero {
@@ -801,8 +794,8 @@ textarea {
   display: grid;
   gap: 16px;
   grid-template-columns: 62px 1fr 42px;
-  min-height: 164px;
-  padding: 20px;
+  min-height: 150px;
+  padding: 18px 20px;
   position: relative;
   transition:
     box-shadow 160ms ease,
@@ -877,7 +870,7 @@ textarea {
   background: #faf8ff;
   border: 1px solid #eee8f9;
   border-radius: 8px;
-  display: inline-flex;
+  display: none;
   gap: 8px;
   margin-top: 14px;
   padding: 7px 10px;
@@ -957,7 +950,7 @@ textarea {
   gap: 10px;
   justify-items: center;
   margin-top: 12px;
-  max-width: 420px;
+  max-width: 500px;
   padding: 22px;
   text-align: center;
   width: 100%;
@@ -971,6 +964,38 @@ textarea {
   font-weight: 850;
   padding: 6px 10px;
   text-transform: uppercase;
+}
+
+.prompt-options {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  margin-top: 8px;
+  width: 100%;
+}
+
+.prompt-options button {
+  background: #f7f4ff;
+  border: 1px solid #d7cdf3;
+  border-radius: 8px;
+  color: #4b2a6b;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  min-height: 46px;
+  padding: 8px 12px;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.prompt-options button:hover,
+.prompt-options button.selected {
+  background: color-mix(in srgb, var(--accent), #fff 78%);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.choice-feedback {
+  margin-top: 20px;
 }
 
 .prompt-visual {

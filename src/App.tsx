@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Award,
+  BookOpen,
   BarChart3,
   CalendarDays,
   Check,
@@ -12,8 +13,10 @@ import {
   FileText,
   Gamepad2,
   Heart,
+  Images,
   LogOut,
   Mic,
+  MessageCircle,
   PlayCircle,
   PlusCircle,
   Radio,
@@ -25,6 +28,8 @@ import {
   Trash2,
   UserRound,
   UsersRound,
+  Volume2,
+  Wind,
   X,
 } from 'lucide-react'
 import html2canvas from 'html2canvas'
@@ -1113,8 +1118,12 @@ function ExercisesView({ selectedPatient, onNewPatient, onStart }: ExercisesView
               <div className="exercise-icon">
                 {exercise.id === 'repete-comigo' && <Mic size={27} />}
                 {exercise.id === 'rimas-divertidas' && <Sparkles size={27} />}
-                {exercise.id === 'monte-historias' && <Award size={27} />}
-                {exercise.id === 'sons-e-mais' && <Heart size={27} />}
+                {exercise.id === 'monte-historias' && <BookOpen size={27} />}
+                {exercise.id === 'sons-e-mais' && <Volume2 size={27} />}
+                {exercise.id === 'nomeie-imagem' && <Images size={27} />}
+                {exercise.id === 'complete-frase' && <MessageCircle size={27} />}
+                {exercise.id === 'sequencia-sonora' && <Radio size={27} />}
+                {exercise.id === 'sopro-respiracao' && <Wind size={27} />}
               </div>
               <div>
                 <div className="exercise-heading">
@@ -1162,8 +1171,13 @@ function PracticeView({
   onListen,
   onRate,
 }: PracticeViewProps) {
+  const [selectedChoices, setSelectedChoices] = useState<Record<string, string>>({})
   const currentPrompt = queue[0]
-  const canRate = soundStatus === 'detected' || soundStatus === 'unavailable'
+  const selectedChoice = currentPrompt ? selectedChoices[currentPrompt.id] ?? null : null
+  const needsMicrophone = exercise.mode === 'voice' || exercise.mode === 'narrative'
+  const canRate = needsMicrophone
+    ? soundStatus === 'detected' || soundStatus === 'unavailable'
+    : selectedChoice !== null
   const currentIndex = exercise.prompts.length - queue.length + 1
   const completed = exercise.prompts.length - queue.length
   const progressPercent = (completed / exercise.prompts.length) * 100
@@ -1206,20 +1220,44 @@ function PracticeView({
             <h2>{currentPrompt.title}</h2>
             <p>{currentPrompt.instruction}</p>
             {currentPrompt.helper && <small>{currentPrompt.helper}</small>}
+            {currentPrompt.options && (
+              <div className="prompt-options" aria-label="Opções de resposta">
+                {currentPrompt.options.map((option) => (
+                  <button
+                    className={selectedChoice === option ? 'selected' : ''}
+                    key={option}
+                    onClick={() => setSelectedChoices((current) => ({ ...current, [currentPrompt.id]: option }))}
+                    type="button"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <button className={`mic-button ${soundStatus}`} onClick={onListen} disabled={soundStatus === 'processing'}>
-            {isRecordingCurrent ? <Square size={24} /> : <Mic size={26} />}
-          </button>
+          {needsMicrophone ? (
+            <>
+              <button className={`mic-button ${soundStatus}`} onClick={onListen} disabled={soundStatus === 'processing'}>
+                {isRecordingCurrent ? <Square size={24} /> : <Mic size={26} />}
+              </button>
 
-          <p className="sound-feedback">
-            {soundStatus === 'idle' && 'Aperte o microfone para gravar a resposta da criança.'}
-            {soundStatus === 'recording' && 'Gravando... toque novamente para parar ou aguarde alguns segundos.'}
-            {soundStatus === 'processing' && 'Salvando áudio da resposta...'}
-            {soundStatus === 'detected' && 'Áudio salvo e som detectado. Avaliação liberada.'}
-            {soundStatus === 'silent' && 'Nenhum som detectado. Tente o microfone novamente.'}
-            {soundStatus === 'unavailable' && 'Microfone indisponível. Avaliação manual liberada.'}
-          </p>
+              <p className="sound-feedback">
+                {soundStatus === 'idle' && 'Aperte o microfone para gravar a resposta da criança.'}
+                {soundStatus === 'recording' && 'Gravando... toque novamente para parar ou aguarde alguns segundos.'}
+                {soundStatus === 'processing' && 'Salvando áudio da resposta...'}
+                {soundStatus === 'detected' && 'Áudio salvo e som detectado. Avaliação liberada.'}
+                {soundStatus === 'silent' && 'Nenhum som detectado. Tente o microfone novamente.'}
+                {soundStatus === 'unavailable' && 'Microfone indisponível. Avaliação manual liberada.'}
+              </p>
+            </>
+          ) : (
+            <p className="sound-feedback choice-feedback">
+              {selectedChoice
+                ? `Resposta selecionada: ${selectedChoice}. A fonoaudióloga pode avaliar.`
+                : 'Selecione a resposta da criança para liberar a avaliação.'}
+            </p>
+          )}
 
           {currentClip && (
             <div className="inline-audio">
@@ -1246,14 +1284,6 @@ function PracticeView({
         </div>
 
         <aside className="practice-side">
-          <div className="side-card mystery-reward">
-            <span>Recompensa</span>
-            <div className="mystery-card" aria-hidden="true">
-              <Sparkles size={34} />
-              <strong>?</strong>
-            </div>
-            <strong>Figurinha surpresa</strong>
-          </div>
           <div className="side-card">
             <span>Fila</span>
             <div className="queue-dots">

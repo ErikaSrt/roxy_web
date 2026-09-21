@@ -1,6 +1,14 @@
 export type AppView = 'dashboard' | 'patients' | 'patient-form' | 'exercises' | 'practice' | 'result' | 'reports'
 
-export type ExerciseId = 'repete-comigo' | 'rimas-divertidas' | 'monte-historias' | 'sons-e-mais'
+export type ExerciseId =
+  | 'repete-comigo'
+  | 'rimas-divertidas'
+  | 'monte-historias'
+  | 'sons-e-mais'
+  | 'nomeie-imagem'
+  | 'complete-frase'
+  | 'sequencia-sonora'
+  | 'sopro-respiracao'
 
 export type Rating = 'ok' | 'retry' | 'later'
 
@@ -30,6 +38,8 @@ export interface ExercisePrompt {
   instruction: string
   visualLabel: string
   helper?: string
+  options?: string[]
+  correctOption?: string
 }
 
 export interface Exercise {
@@ -41,6 +51,7 @@ export interface Exercise {
   accent: string
   badgeId: string
   badgeLabel: string
+  mode: 'voice' | 'choice' | 'narrative' | 'breathing'
   prompts: ExercisePrompt[]
 }
 
