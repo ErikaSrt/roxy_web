@@ -2,22 +2,52 @@
 
 > Organizacao incremental: listas, cartoes, comentarios, anexos e datas existentes representam o historico real do projeto e nao devem ser removidos. Quando ja existir um cartao equivalente, complemente-o com descricao, checklist, etiqueta e evidencia em vez de criar uma duplicata.
 
-## Configuracao do quadro
+## Quadro Oficial
 
-Nome sugerido: `Roxy - Desenvolvimento do TCC`
+- **Nome:** `Adventure Talk`
+- **URL:** https://trello.com/b/15jrhjQh/adventure-talk
+- **Metodo:** Scrum adaptado ao acompanhamento academico do TCC.
 
-Listas:
+Listas atuais, preservadas e padronizadas:
 
-1. Visao do Produto
-2. Sprint 0 - Descoberta e Prototipo
-3. Sprint 1 - Fundacao e Pacientes
-4. Sprint 2 - Exercicios e Prontuario
-5. Sprint 3 - Dashboard, Busca e Audio
-6. Sprint 4 - UX e Novos Exercicios
-7. Sprint 5 - Qualidade e Responsividade
-8. Backlog de Producao
+1. Backlog
+2. Sprint 01
+3. Sprint 02
+4. Sprint 03
+5. Sprint 04
+6. Sprint 05
+7. Sprint 06
+8. Em andamento
+9. Concluidos
+10. Testes
 
-Etiquetas:
+O quadro mantem os registros dos meses anteriores e acrescenta as entregas tecnicas da aplicacao. Os cartoes de producao permanecem no Backlog; funcionalidades implementadas ficam em Concluidos; validacoes e casos de teste ficam em Testes.
+
+## Organizacao Aplicada em Setembro de 2026
+
+Cartoes acrescentados em **Concluidos**:
+
+- Implementacao web responsiva do Roxy.
+- Gestao clinica de pacientes e dashboard.
+- Exercicios terapeuticos, microfone e avaliacao.
+- Prontuario, cartas colecionaveis e relatorios.
+- Documentacao tecnica e publicacao no GitHub.
+
+Cartoes acrescentados no **Backlog**:
+
+- Producao: Supabase Auth, banco e RLS.
+- Producao: audios no Supabase Storage.
+- Producao: LGPD, consentimento e documentos legais.
+- Qualidade: testes automatizados e homologacao.
+- Tela inicial: suporte, Sobre o Roxy e WhatsApp.
+
+Cartao acrescentado em **Testes**:
+
+- Validacao tecnica e responsividade.
+
+O cartao `Sprint 6 - Finalizacao do TCC` foi complementado com as entregas tecnicas, evidencias do GitHub, validacoes executadas e definicao de pronto, sem remover o planejamento original.
+
+## Etiquetas Sugeridas
 
 - `UX/UI` - roxo
 - `Frontend` - azul
