@@ -67,15 +67,19 @@ git commit -m "docs: preparar projeto roxy para github"
 
 ## Conectar ao GitHub
 
-Crie um repositorio vazio no GitHub e depois execute:
+Repositorio oficial do projeto:
 
-```bash
-git branch -M main
-git remote add origin https://github.com/SEU-USUARIO/roxy-web.git
-git push -u origin main
+```text
+https://github.com/ErikaSrt/roxy_web
 ```
 
-Troque `SEU-USUARIO` pelo seu usuario do GitHub.
+O repositorio local ja esta conectado como `origin`. Para uma nova copia, use:
+
+```bash
+git clone https://github.com/ErikaSrt/roxy_web.git
+cd roxy_web
+pnpm install
+```
 
 ## Atualizar Depois
 

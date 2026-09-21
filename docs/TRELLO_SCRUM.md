@@ -1,5 +1,7 @@
 # Planejamento Scrum para o Trello - Projeto Roxy
 
+> Organizacao incremental: listas, cartoes, comentarios, anexos e datas existentes representam o historico real do projeto e nao devem ser removidos. Quando ja existir um cartao equivalente, complemente-o com descricao, checklist, etiqueta e evidencia em vez de criar uma duplicata.
+
 ## Configuracao do quadro
 
 Nome sugerido: `Roxy - Desenvolvimento do TCC`
@@ -248,6 +250,8 @@ Etiquetas:
 
 ## Backlog de Producao
 
+Os itens abaixo nao devem ser apresentados como funcionalidades concluidas. Eles dependem de infraestrutura, validacao de seguranca ou definicao legal antes do uso clinico real.
+
 ### Card: Conectar Supabase Auth e banco real
 
 - Login seguro por profissional.
@@ -298,4 +302,3 @@ Etiquetas:
 - **Revisao:** demonstrar os criterios de aceite ao orientador.
 - **Retrospectiva:** registrar o que funcionou, dificuldades e melhoria para a proxima sprint.
 - **Refinamento:** detalhar os cards futuros antes do planejamento.
-

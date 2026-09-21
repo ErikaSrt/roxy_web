@@ -88,6 +88,14 @@ Chaves usadas:
 
 Esse modelo facilita apresentacao e testes sem backend, mas nao deve ser usado sozinho em producao com dados reais. Os audios gravados tambem ficam em `localStorage` como data URL dentro dos registros de sessao.
 
+### Consequencias do Modo Local
+
+- Os dados nao sao sincronizados entre computadores ou navegadores.
+- Nao existe isolamento real entre contas profissionais.
+- O espaco disponivel para audio e limitado pelo navegador.
+- A exclusao do armazenamento do site apaga os dados locais.
+- O modo atual e adequado para demonstracao academica, nao para atendimento clinico em producao.
+
 ## Evolucao Para Producao
 
 Para uso real, os proximos passos recomendados sao:
@@ -99,6 +107,19 @@ Para uso real, os proximos passos recomendados sao:
 - Salvar arquivos exportados apenas quando houver consentimento.
 - Criar termos de uso e politica de privacidade.
 - Adicionar testes automatizados para fluxos principais.
+
+### Arquitetura Alvo
+
+```text
+React + TypeScript
+  |
+  +-- Supabase Auth
+  +-- PostgreSQL com Row Level Security
+  +-- Supabase Storage para audios
+  +-- Exportacao local de PDF
+```
+
+O acesso aos dados deve ser sempre associado ao identificador da profissional autenticada. Audios devem ser armazenados em bucket privado e disponibilizados por URL temporaria, com consentimento e politica de retencao definidos.
 
 ## Decisoes de Produto
 

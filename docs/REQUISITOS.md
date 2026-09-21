@@ -1,5 +1,39 @@
 # Requisitos do Projeto
 
+## Status do Documento
+
+- **Versao:** 1.1
+- **Atualizado em:** setembro de 2026
+- **Estado do produto:** prototipo funcional avancado para demonstracao academica
+- **Persistencia atual:** navegador (`localStorage`)
+- **Persistencia planejada:** Supabase Auth, Database e Storage
+
+## Legenda de Status
+
+- **Implementado:** disponivel na aplicacao atual.
+- **Parcial:** funciona no modo local, mas precisa de infraestrutura ou seguranca adicional para producao.
+- **Planejado:** ainda faz parte do backlog.
+
+## Matriz de Requisitos Funcionais
+
+| ID | Requisito | Status |
+| --- | --- | --- |
+| RF01 | Login e cadastro simples da fonoaudiologa | Implementado |
+| RF02 | Cadastro, edicao, busca e exclusao de pacientes | Implementado |
+| RF03 | Troca do paciente ativo pelo menu | Implementado |
+| RF04 | Dashboard clinico com visao geral dos pacientes | Implementado |
+| RF05 | Catalogo com oito exercicios terapeuticos | Implementado |
+| RF06 | Captura de microfone, deteccao de som e avaliacao manual | Implementado |
+| RF07 | Registro de resultado completo ou parcial | Implementado |
+| RF08 | Carta colecionavel surpresa ao concluir exercicio | Implementado |
+| RF09 | Prontuario com historico, progresso, cartas e audios | Implementado |
+| RF10 | Exportacao do prontuario em PDF | Implementado |
+| RF11 | Persistencia dos dados entre acessos no mesmo navegador | Implementado |
+| RF12 | Autenticacao real e isolamento dos dados por profissional | Planejado |
+| RF13 | Persistencia remota de pacientes, sessoes e prontuarios | Planejado |
+| RF14 | Armazenamento seguro de audios no Supabase Storage | Planejado |
+| RF15 | Suporte por e-mail, apresentacao do Roxy e contato por WhatsApp | Planejado |
+
 ## Objetivo
 
 Construir um site responsivo para atendimentos infantis de fonoaudiologia, mantendo uma experiencia profissional para a fonoaudiologa e ludica para a crianca durante os exercicios.
@@ -153,3 +187,32 @@ Como o sistema envolve dados infantis e clinicos, uma versao de producao deve co
 - Exclusao de dados sob solicitacao.
 - Backups.
 - Adequacao a LGPD.
+
+## Requisitos Nao Funcionais
+
+- **RNF01 - Responsividade:** os fluxos principais devem funcionar a partir de 320 px, sem rolagem horizontal.
+- **RNF02 - Compatibilidade:** a captura de audio depende de navegador compativel com `MediaRecorder` e permissao de microfone.
+- **RNF03 - Usabilidade:** a fonoaudiologa deve conseguir trocar o paciente ativo sem interromper o fluxo de atendimento.
+- **RNF04 - Acessibilidade:** botoes e campos devem possuir rotulos compreensiveis, foco visivel e area de toque adequada.
+- **RNF05 - Desempenho:** a interface deve responder imediatamente a busca, navegacao e avaliacao no conjunto de dados local.
+- **RNF06 - Seguranca de producao:** dados clinicos e infantis nao devem depender apenas de `localStorage`.
+- **RNF07 - Rastreabilidade:** cada sessao deve registrar paciente, exercicio, data, pontuacao, tentativas, observacoes, carta e audios associados.
+
+## Regras de Negocio
+
+- **RN01:** apenas a fonoaudiologa opera o sistema; a crianca participa acompanhando os exercicios.
+- **RN02:** cada card recebe uma unica avaliacao final: correto, incorreto ou parcial.
+- **RN03:** qualquer avaliacao avanca para o card seguinte; itens incorretos nao retornam automaticamente na mesma sessao.
+- **RN04:** correto vale um ponto; parcial e incorreto ficam registrados para retomada e nao contam como acerto integral.
+- **RN05:** todo exercicio finalizado entrega uma carta, independentemente da pontuacao.
+- **RN06:** a carta permanece oculta no catalogo e durante a pratica, sendo revelada apenas no resultado.
+- **RN07:** resultados abaixo de 100% devem ser registrados como conclusao parcial no prontuario.
+
+## Limitacoes Conhecidas
+
+- O login atual e demonstrativo e nao valida credenciais em um servidor.
+- Os dados ficam restritos ao navegador e dispositivo utilizados.
+- Audios em `dataUrl` podem atingir o limite de armazenamento do navegador em sessoes extensas.
+- Limpar os dados do navegador remove pacientes, sessoes e audios locais.
+- A estrutura Supabase existe, mas ainda nao substitui a persistencia local da interface.
+- Termos de uso, politica de privacidade, consentimento e politicas RLS finais ainda precisam ser aprovados antes de uso clinico real.
