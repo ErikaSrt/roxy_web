@@ -226,6 +226,28 @@ function App() {
     }
   }
 
+  function deleteAudioClip(sessionId: string, clipId: string) {
+    const session = sessions.find((item) => item.id === sessionId)
+    const clip = session?.audioClips?.find((item) => item.id === clipId)
+    if (!session || !clip) return
+
+    const confirmed = window.confirm(`Excluir o áudio de “${clip.promptTitle}”? Esta ação não pode ser desfeita.`)
+    if (!confirmed) return
+
+    setSessions((current) => current.map((item) => {
+      if (item.id !== sessionId) return item
+
+      const remainingClips = (item.audioClips ?? []).filter((audioClip) => audioClip.id !== clipId)
+      return {
+        ...item,
+        audioClips: remainingClips,
+        notes: remainingClips.length
+          ? item.notes
+          : item.notes.replace(' Áudios salvos no histórico da sessão.', ''),
+      }
+    }))
+  }
+
   function startPractice(exerciseId: ExerciseId) {
     const exercise = getExercise(exerciseId) ?? exercises[0]
     setSelectedExerciseId(exerciseId)
@@ -458,6 +480,7 @@ function App() {
             patients={patients}
             selectedPatientId={selectedPatient?.id ?? ''}
             sessions={sessions}
+            onDeleteAudio={deleteAudioClip}
             onOpenPatient={(patient) => {
               setSelectedPatientId(patient.id)
               setView('reports')
@@ -894,11 +917,19 @@ interface DashboardViewProps {
   patients: Patient[]
   selectedPatientId: string
   sessions: SessionRecord[]
+  onDeleteAudio: (sessionId: string, clipId: string) => void
   onOpenPatient: (patient: Patient) => void
   onStartExercise: (patient: Patient, exerciseId: ExerciseId) => void
 }
 
-function DashboardView({ patients, selectedPatientId, sessions, onOpenPatient, onStartExercise }: DashboardViewProps) {
+function DashboardView({
+  patients,
+  selectedPatientId,
+  sessions,
+  onDeleteAudio,
+  onOpenPatient,
+  onStartExercise,
+}: DashboardViewProps) {
   const totalAudioClips = sessions.reduce((sum, session) => sum + (session.audioClips?.length ?? 0), 0)
   const totalBadges = sessions.length
   const averageProgress = sessions.length
@@ -1012,7 +1043,12 @@ function DashboardView({ patients, selectedPatientId, sessions, onOpenPatient, o
           <article className="panel">
             <span className="section-kicker">Áudios</span>
             <h2>Gravações para revisar</h2>
-            <AudioClipList sessions={latestSessions} patients={patients} compact />
+            <AudioClipList
+              sessions={latestSessions}
+              patients={patients}
+              compact
+              onDelete={onDeleteAudio}
+            />
           </article>
         </aside>
       </div>
@@ -1593,11 +1629,12 @@ function ReportsView({ badges, exporting, onEditPatient, onExport, patient, refN
 
 interface AudioClipListProps {
   compact?: boolean
+  onDelete?: (sessionId: string, clipId: string) => void
   patients: Patient[]
   sessions: SessionRecord[]
 }
 
-function AudioClipList({ compact = false, patients, sessions }: AudioClipListProps) {
+function AudioClipList({ compact = false, onDelete, patients, sessions }: AudioClipListProps) {
   const clips = sessions.flatMap((session) =>
     (session.audioClips ?? []).map((clip) => ({
       clip,
@@ -1614,12 +1651,25 @@ function AudioClipList({ compact = false, patients, sessions }: AudioClipListPro
     <div className={compact ? 'audio-list compact' : 'audio-list'}>
       {clips.map(({ clip, patient, session }) => (
         <div className="audio-item" key={clip.id}>
-          <div>
-            <strong>{clip.promptTitle}</strong>
-            <span>
-              {patient?.name ? `${patient.name} - ` : ''}
-              {session.exerciseName} - {new Date(clip.createdAt).toLocaleDateString('pt-BR')}
-            </span>
+          <div className="audio-item-header">
+            <div>
+              <strong>{clip.promptTitle}</strong>
+              <span>
+                {patient?.name ? `${patient.name} - ` : ''}
+                {session.exerciseName} - {new Date(clip.createdAt).toLocaleDateString('pt-BR')}
+              </span>
+            </div>
+            {onDelete && (
+              <button
+                aria-label={`Excluir áudio de ${clip.promptTitle}`}
+                className="audio-delete-button"
+                title="Excluir áudio"
+                type="button"
+                onClick={() => onDelete(session.id, clip.id)}
+              >
+                <Trash2 size={17} />
+              </button>
+            )}
           </div>
           <audio controls src={clip.dataUrl} />
         </div>

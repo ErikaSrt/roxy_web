@@ -33,6 +33,7 @@
 | RF13 | Persistencia remota de pacientes, sessoes e prontuarios | Planejado |
 | RF14 | Armazenamento seguro de audios no Supabase Storage | Planejado |
 | RF15 | Suporte por e-mail, apresentacao do Roxy e contato por WhatsApp | Implementado |
+| RF16 | Exclusao individual de audios salvos pelo dashboard | Implementado |
 
 ## Objetivo
 

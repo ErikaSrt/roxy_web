@@ -10,6 +10,7 @@ O projeto foi inspirado no prototipo visual da Roxy, mantendo a identidade com t
 - Cadastro de profissional com nome, e-mail, CRFa e telefone.
 - Cadastro de pacientes com dados clinicos e agenda de sessoes.
 - Dashboard clinico com visao geral de todos os pacientes.
+- Reproducao e exclusao individual de audios salvos diretamente pelo dashboard.
 - Troca de paciente ativo diretamente pelo menu lateral.
 - Lista de pacientes com busca, abertura de prontuario e modo de exclusao.
 - Busca por nome, ID, responsaveis, telefone, diagnostico, agenda e exercicios.
