@@ -338,18 +338,13 @@ function App() {
 
     setAttemptLog(nextLog)
 
-    if (rating === 'ok') {
-      const remaining = practiceQueue.slice(1)
-      if (remaining.length === 0) {
-        finishPractice(nextLog)
-        return
-      }
-
-      setPracticeQueue(remaining)
-    } else {
-      setPracticeQueue([...practiceQueue.slice(1), currentPrompt])
+    const remaining = practiceQueue.slice(1)
+    if (remaining.length === 0) {
+      finishPractice(nextLog)
+      return
     }
 
+    setPracticeQueue(remaining)
     setSoundStatus('idle')
   }
 
@@ -358,17 +353,27 @@ function App() {
 
     const badge = getBadge(selectedExercise.badgeId) ?? badges[0]
     const now = new Date().toISOString()
+    const attempts = selectedExercise.prompts.flatMap((prompt) => {
+      const attempt = finalLog[prompt.id]
+      return attempt ? [attempt] : []
+    })
+    const score = attempts.filter((attempt) => attempt.rating === 'ok').length
+    const percentage = Math.round((score / selectedExercise.prompts.length) * 100)
+    const reviewItems = attempts.filter((attempt) => attempt.rating !== 'ok').map((attempt) => attempt.title)
+    const completionNote = percentage === 100
+      ? 'Exercício concluído integralmente com avaliação manual.'
+      : `Exercício concluído parcialmente (${percentage}%). Retomar: ${reviewItems.join(', ')}.`
     const record: SessionRecord = {
       id: createId('SES'),
       patientId: selectedPatient.id,
       exerciseId: selectedExercise.id,
       exerciseName: selectedExercise.name,
       date: now,
-      score: selectedExercise.prompts.length,
+      score,
       total: selectedExercise.prompts.length,
-      notes: 'Exercício concluído com avaliação manual. Áudios salvos no histórico da sessão.',
+      notes: `${completionNote}${Object.keys(recordedClips).length ? ' Áudios salvos no histórico da sessão.' : ''}`,
       badge: { ...badge, earnedAt: now },
-      attempts: selectedExercise.prompts.map((prompt) => finalLog[prompt.id]),
+      attempts,
       audioClips: selectedExercise.prompts.flatMap((prompt) => {
         const clip = recordedClips[prompt.id]
         return clip ? [clip] : []
@@ -1271,13 +1276,13 @@ function PracticeView({
           )}
 
           <div className="rating-actions">
-            <button className="rate-ok" disabled={!canRate} onClick={() => onRate('ok')} aria-label="Avaliação correta">
+            <button className="rate-ok" disabled={!canRate} onClick={() => onRate('ok')} aria-label="Avaliação correta" title="Correto">
               <Check size={25} />
             </button>
-            <button className="rate-later" disabled={!canRate} onClick={() => onRate('later')} aria-label="Rever depois">
+            <button className="rate-later" disabled={!canRate} onClick={() => onRate('later')} aria-label="Avaliação incorreta" title="Incorreto">
               <X size={25} />
             </button>
-            <button className="rate-retry" disabled={!canRate} onClick={() => onRate('retry')} aria-label="Repetir no final">
+            <button className="rate-retry" disabled={!canRate} onClick={() => onRate('retry')} aria-label="Desempenho parcial" title="Parcial">
               <ArrowRight size={25} />
             </button>
           </div>
@@ -1291,7 +1296,7 @@ function PracticeView({
                 <i className={queue.some((item) => item.id === prompt.id) ? 'pending' : 'done'} key={prompt.id} />
               ))}
             </div>
-            <p>Cards marcados em amarelo ou vermelho voltam para o final até receberem OK.</p>
+            <p>Cada avaliação fica registrada e o atendimento segue para o próximo card.</p>
           </div>
         </aside>
       </div>
@@ -1316,6 +1321,9 @@ function ResultView({ record, onPracticeAgain, onReports }: ResultViewProps) {
     )
   }
 
+  const percentage = Math.round((record.score / record.total) * 100)
+  const isComplete = percentage === 100
+
   return (
     <section className="panel result-panel">
       <div className="stars" aria-label="3 estrelas">
@@ -1329,7 +1337,12 @@ function ResultView({ record, onPracticeAgain, onReports }: ResultViewProps) {
           <strong>
             {record.score}/{record.total}
           </strong>
-          <p>Excelente participação. A carta já ficou salva no prontuário do paciente.</p>
+          <p>
+            {isComplete
+              ? 'Excelente participação. A atividade foi concluída integralmente.'
+              : `Atividade concluída parcialmente: ${percentage}% de aproveitamento.`}
+            {' '}A carta já ficou salva no prontuário do paciente.
+          </p>
           {(record.audioClips?.length ?? 0) > 0 && <p>{record.audioClips?.length} áudio(s) salvo(s) para revisão clínica.</p>}
           <div className="result-actions">
             <button className="ghost-button" onClick={onPracticeAgain}>
