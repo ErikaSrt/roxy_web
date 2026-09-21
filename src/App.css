@@ -15,18 +15,14 @@
 
 .splash-logo-wrap {
   animation: logo-drop 4s cubic-bezier(0.18, 0.82, 0.26, 1) forwards;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  box-shadow: 0 32px 70px rgba(80, 46, 122, 0.2);
-  padding: 16px;
 }
 
 .splash-logo-wrap img {
   display: block;
+  filter: drop-shadow(0 24px 28px rgba(80, 46, 122, 0.2));
   height: min(34vw, 280px);
   object-fit: contain;
-  width: min(34vw, 280px);
+  width: min(45vw, 360px);
 }
 
 .splash-copy {
@@ -152,6 +148,7 @@
 }
 
 .sidebar-brand img {
+  filter: drop-shadow(0 8px 10px rgba(84, 58, 124, 0.14));
   height: 112px;
   object-fit: contain;
   width: 150px;
@@ -1434,12 +1431,8 @@ textarea {
 }
 
 .brand-stage img {
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  border-radius: 8px;
-  box-shadow: 0 28px 48px rgba(67, 40, 97, 0.16);
+  filter: drop-shadow(0 24px 24px rgba(67, 40, 97, 0.16));
   max-width: 380px;
-  padding: 12px;
   width: 70%;
 }
 
