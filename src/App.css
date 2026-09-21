@@ -1611,12 +1611,65 @@ textarea {
 }
 
 @media (max-width: 620px) {
+  .sidebar {
+    padding: 14px 16px;
+  }
+
+  .sidebar-brand {
+    margin-bottom: 12px;
+  }
+
+  .sidebar-brand img {
+    height: 56px;
+    width: 76px;
+  }
+
+  .sidebar-brand span {
+    font-size: 14px;
+  }
+
+  .side-nav {
+    gap: 8px;
+  }
+
   .side-nav button {
     font-size: 0;
+    min-height: 48px;
   }
 
   .side-nav svg {
     flex: 0 0 auto;
+  }
+
+  .workspace,
+  .auth-page {
+    padding: 18px;
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .page-header h1 {
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  .page-header p {
+    font-size: 14px;
+  }
+
+  .panel {
+    padding: 20px;
+  }
+
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .toolbar > button,
+  .search-box {
+    width: 100%;
   }
 
   .patient-row {
@@ -1638,6 +1691,31 @@ textarea {
     flex-direction: column;
   }
 
+  .exercise-card {
+    gap: 12px;
+    grid-template-columns: 48px minmax(0, 1fr) 34px;
+    padding: 16px;
+  }
+
+  .exercise-icon {
+    height: 46px;
+    width: 46px;
+  }
+
+  .exercise-card h2 {
+    font-size: 18px;
+  }
+
+  .exercise-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-mini-stats {
+    gap: 8px;
+    grid-template-columns: auto auto;
+    justify-content: center;
+  }
+
   .prompt-visual {
     font-size: 23px;
     width: 100%;
@@ -1645,6 +1723,14 @@ textarea {
 
   .practice-panel {
     padding: 20px;
+  }
+
+  .prompt-card {
+    padding: 16px;
+  }
+
+  .prompt-options {
+    grid-template-columns: 1fr;
   }
 
   .practice-topline {
@@ -1662,5 +1748,71 @@ textarea {
   .dashboard-patient-meta {
     grid-column: 1 / -1;
     justify-items: stretch;
+  }
+
+  .result-layout {
+    gap: 22px;
+  }
+
+  .earned-card {
+    justify-self: center;
+    max-width: 270px;
+  }
+
+  .result-copy strong {
+    font-size: 44px;
+  }
+
+  .patient-summary {
+    justify-items: stretch;
+  }
+
+  .metric-card {
+    width: 100%;
+  }
+
+  .auth-nav button {
+    flex: 1 1 120px;
+  }
+
+  .auth-grid {
+    margin-top: 24px;
+  }
+
+  .brand-stage h1 {
+    font-size: 46px;
+  }
+
+  .brand-stage p {
+    font-size: 16px;
+  }
+
+  .auth-card {
+    padding: 22px 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .workspace,
+  .auth-page {
+    padding: 14px;
+  }
+
+  .sidebar-brand span {
+    display: none;
+  }
+
+  .exercise-card {
+    grid-template-columns: 44px minmax(0, 1fr) 30px;
+    padding: 14px;
+  }
+
+  .exercise-icon {
+    height: 42px;
+    width: 42px;
+  }
+
+  .rating-actions {
+    gap: 12px;
   }
 }
