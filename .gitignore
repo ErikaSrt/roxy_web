@@ -11,6 +11,16 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+
+# Artefatos locais de documentação e geração
+output/
+tmp/
+
+# Configuração local da Vercel
+.vercel/
 
 # Editor directories and files
 .vscode/*

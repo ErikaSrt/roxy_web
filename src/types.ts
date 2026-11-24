@@ -17,6 +17,7 @@ export interface Professional {
   email: string
   crfa: string
   phone: string
+  photoUrl?: string
 }
 
 export interface Patient {

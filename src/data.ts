@@ -1,6 +1,6 @@
 import type { Badge, Exercise, Patient } from './types'
 
-export const ROXY_LOGO = '/assets/roxy-logo-transparent.png'
+export const ROXY_LOGO = '/assets/roxy-brand-icon-v2.png'
 
 export const badges: Badge[] = [
   {

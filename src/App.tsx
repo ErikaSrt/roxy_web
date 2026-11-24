@@ -46,6 +46,7 @@ const emptyProfessional: Professional = {
   email: '',
   crfa: '',
   phone: '',
+  photoUrl: '',
 }
 
 const emptyPatient: Patient = {
@@ -94,6 +95,14 @@ const viewTitles: Record<AppView, { title: string; subtitle: string }> = {
 
 type SoundStatus = 'idle' | 'recording' | 'detected' | 'silent' | 'unavailable' | 'processing'
 
+interface AudioDeleteTarget {
+  clipId: string
+  exerciseName: string
+  patientName: string
+  promptTitle: string
+  sessionId: string
+}
+
 function normalizeText(value: string) {
   return value
     .normalize('NFD')
@@ -127,16 +136,21 @@ function App() {
   const [practiceQueue, setPracticeQueue] = useState<Exercise['prompts']>([])
   const [attemptLog, setAttemptLog] = useState<Record<string, PromptAttempt>>({})
   const [soundStatus, setSoundStatus] = useState<SoundStatus>('idle')
+  const [micLevel, setMicLevel] = useState(0)
   const [recordedClips, setRecordedClips] = useState<Record<string, AudioClip>>({})
   const [recordingPromptId, setRecordingPromptId] = useState<string | null>(null)
   const [lastSession, setLastSession] = useState<SessionRecord | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [audioDeleteTarget, setAudioDeleteTarget] = useState<AudioDeleteTarget | null>(null)
   const reportRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const recordingTimeoutRef = useRef<number | null>(null)
   const recordingStartedAtRef = useRef(0)
   const recordingPeakRef = useRef(0)
+  const recordingNoiseFloorRef = useRef(0.004)
+  const recordingVoicedFramesRef = useRef(0)
+  const levelUpdatedAtRef = useRef(0)
   const recordingStreamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -198,6 +212,7 @@ function App() {
 
     void audioContextRef.current?.close()
     audioContextRef.current = null
+    setMicLevel(0)
   }
 
   function openPatientForm(patient?: Patient) {
@@ -231,8 +246,19 @@ function App() {
     const clip = session?.audioClips?.find((item) => item.id === clipId)
     if (!session || !clip) return
 
-    const confirmed = window.confirm(`Excluir o áudio de “${clip.promptTitle}”? Esta ação não pode ser desfeita.`)
-    if (!confirmed) return
+    setAudioDeleteTarget({
+      clipId,
+      exerciseName: session.exerciseName,
+      patientName: patients.find((patient) => patient.id === session.patientId)?.name ?? 'Paciente',
+      promptTitle: clip.promptTitle,
+      sessionId,
+    })
+  }
+
+  function confirmAudioDeletion() {
+    if (!audioDeleteTarget) return
+
+    const { clipId, sessionId } = audioDeleteTarget
 
     setSessions((current) => current.map((item) => {
       if (item.id !== sessionId) return item
@@ -246,6 +272,8 @@ function App() {
           : item.notes.replace(' Áudios salvos no histórico da sessão.', ''),
       }
     }))
+
+    setAudioDeleteTarget(null)
   }
 
   function startPractice(exerciseId: ExerciseId) {
@@ -256,6 +284,7 @@ function App() {
     setRecordedClips({})
     setRecordingPromptId(null)
     setSoundStatus('idle')
+    setMicLevel(0)
     setView('practice')
   }
 
@@ -270,16 +299,35 @@ function App() {
     if (!currentPrompt) return
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Microfone não suportado neste navegador.')
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          autoGainControl: true,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      })
       const audioContext = new AudioContext()
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume()
+      }
       const source = audioContext.createMediaStreamSource(stream)
       const analyser = audioContext.createAnalyser()
-      const data = new Uint8Array(analyser.fftSize)
+      analyser.fftSize = 2048
+      analyser.smoothingTimeConstant = 0.7
+      const data = new Float32Array(analyser.fftSize)
       const recorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported('audio/webm') ? { mimeType: 'audio/webm' } : undefined)
 
       source.connect(analyser)
       audioChunksRef.current = []
       recordingPeakRef.current = 0
+      recordingNoiseFloorRef.current = 0.004
+      recordingVoicedFramesRef.current = 0
+      levelUpdatedAtRef.current = 0
       recordingStartedAtRef.current = performance.now()
       recordingStreamRef.current = stream
       audioContextRef.current = audioContext
@@ -288,9 +336,40 @@ function App() {
       setSoundStatus('recording')
 
       const measure = () => {
-        analyser.getByteTimeDomainData(data)
+        analyser.getFloatTimeDomainData(data)
+        let sumSquares = 0
+        let framePeak = 0
+
         for (const value of data) {
-          recordingPeakRef.current = Math.max(recordingPeakRef.current, Math.abs(value - 128) / 128)
+          const amplitude = Math.abs(value)
+          sumSquares += value * value
+          framePeak = Math.max(framePeak, amplitude)
+        }
+
+        const rms = Math.sqrt(sumSquares / data.length)
+        const elapsed = performance.now() - recordingStartedAtRef.current
+        recordingPeakRef.current = Math.max(recordingPeakRef.current, framePeak)
+
+        if (elapsed < 650) {
+          recordingNoiseFloorRef.current =
+            recordingNoiseFloorRef.current * 0.88 + rms * 0.12
+        } else {
+          const dynamicThreshold = Math.min(
+            0.024,
+            Math.max(0.007, recordingNoiseFloorRef.current * 2.15),
+          )
+          const peakThreshold = Math.max(0.016, recordingNoiseFloorRef.current * 3)
+
+          if (rms >= dynamicThreshold || framePeak >= peakThreshold) {
+            recordingVoicedFramesRef.current += 1
+          }
+        }
+
+        const now = performance.now()
+        if (now - levelUpdatedAtRef.current > 90) {
+          const adjustedLevel = Math.max(0, rms - recordingNoiseFloorRef.current * 0.7)
+          setMicLevel(Math.min(1, adjustedLevel * 20))
+          levelUpdatedAtRef.current = now
         }
 
         animationFrameRef.current = requestAnimationFrame(measure)
@@ -329,7 +408,9 @@ function App() {
 
         mediaRecorderRef.current = null
         setRecordingPromptId(null)
-        setSoundStatus(recordingPeakRef.current > 0.03 ? 'detected' : 'silent')
+        const speechDetected =
+          recordingVoicedFramesRef.current >= 5 || recordingPeakRef.current >= 0.022
+        setSoundStatus(speechDetected ? 'detected' : 'silent')
       })
 
       recorder.start()
@@ -530,6 +611,7 @@ function App() {
             queue={practiceQueue}
             recordedClips={recordedClips}
             recordingPromptId={recordingPromptId}
+            micLevel={micLevel}
             soundStatus={soundStatus}
             onBack={() => setView('exercises')}
             onListen={listenForSound}
@@ -553,6 +635,13 @@ function App() {
           />
         )}
       </section>
+      {audioDeleteTarget && (
+        <AudioDeleteDialog
+          target={audioDeleteTarget}
+          onCancel={() => setAudioDeleteTarget(null)}
+          onConfirm={confirmAudioDeletion}
+        />
+      )}
     </main>
   )
 }
@@ -560,17 +649,43 @@ function App() {
 function SplashScreen() {
   return (
     <main className="splash-screen" aria-label="Carregando Roxy">
-      <div className="splash-logo-wrap">
-        <img src={ROXY_LOGO} alt="Roxy" />
+      <div className="splash-aurora" aria-hidden="true">
+        <span />
+        <span />
+        <span />
       </div>
-      <div className="splash-copy">
-        <strong>Roxy</strong>
-        <span>Speech Therapy</span>
-      </div>
-      <div className="splash-loader" aria-hidden="true">
-        <span />
-        <span />
-        <span />
+
+      <section className="splash-intro">
+        <div className="splash-emblem">
+          <span className="splash-orbit splash-orbit-one" aria-hidden="true" />
+          <span className="splash-orbit splash-orbit-two" aria-hidden="true" />
+          <div className="splash-logo-wrap">
+            <span className="splash-logo-glow" aria-hidden="true" />
+            <img src={ROXY_LOGO} alt="Roxy" />
+          </div>
+          <div className="splash-voice" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
+        </div>
+
+        <div className="splash-copy">
+          <span className="splash-eyebrow">Fonoaudiologia infantil</span>
+          <strong>Roxy</strong>
+          <p>Cada voz merece ser ouvida.</p>
+        </div>
+
+        <div className="splash-progress" aria-hidden="true">
+          <span />
+        </div>
+        <span className="splash-loading-text">Preparando um atendimento especial</span>
+      </section>
+
+      <div className="splash-paws" aria-hidden="true">
+        <span>•</span><span>•</span><span>●</span>
       </div>
     </main>
   )
@@ -587,6 +702,8 @@ interface AuthScreenProps {
 function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: AuthScreenProps) {
   const [profile, setProfile] = useState<Professional>(professional ?? emptyProfessional)
   const [contactDialog, setContactDialog] = useState<'support' | 'about' | 'consultant' | null>(null)
+  const [legalDialog, setLegalDialog] = useState<'terms' | 'privacy' | null>(null)
+  const [photoError, setPhotoError] = useState('')
 
   const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'suporteroxy256@gmail.com'
   const consultantPhone = (import.meta.env.VITE_CONSULTANT_WHATSAPP || '554298104857').replace(/\D/g, '')
@@ -600,16 +717,44 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
     onCreate(profile)
   }
 
+  function handleProfilePhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setPhotoError('Escolha um arquivo de imagem válido.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      setPhotoError('A imagem deve ter no máximo 3 MB.')
+      event.target.value = ''
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setProfile((current) => ({ ...current, photoUrl: String(reader.result) }))
+      setPhotoError('')
+    }
+    reader.onerror = () => setPhotoError('Não foi possível carregar essa imagem.')
+    reader.readAsDataURL(file)
+  }
+
   useEffect(() => {
-    if (!contactDialog) return
+    if (!contactDialog && !legalDialog) return
 
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setContactDialog(null)
+      if (event.key === 'Escape') {
+        setContactDialog(null)
+        setLegalDialog(null)
+      }
     }
 
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
-  }, [contactDialog])
+  }, [contactDialog, legalDialog])
 
   return (
     <main className="auth-page">
@@ -682,6 +827,36 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
           {authMode === 'create' && (
             <form className="stack-form" onSubmit={submitProfile}>
               <h2>Criar conta profissional</h2>
+              <div className="profile-photo-field">
+                <div className="profile-photo-preview" aria-label="Pré-visualização da foto de perfil">
+                  {profile.photoUrl ? (
+                    <img src={profile.photoUrl} alt="Foto de perfil selecionada" />
+                  ) : (
+                    <UserRound size={34} aria-hidden="true" />
+                  )}
+                </div>
+                <div className="profile-photo-copy">
+                  <strong>Foto de perfil</strong>
+                  <span>Ajuda a identificar a profissional no sistema.</span>
+                  <div className="profile-photo-actions">
+                    <label className="photo-upload-button">
+                      <Images size={17} /> {profile.photoUrl ? 'Trocar foto' : 'Escolher foto'}
+                      <input accept="image/png,image/jpeg,image/webp" type="file" onChange={handleProfilePhoto} />
+                    </label>
+                    {profile.photoUrl && (
+                      <button
+                        aria-label="Remover foto de perfil"
+                        className="photo-remove-button"
+                        type="button"
+                        onClick={() => setProfile((current) => ({ ...current, photoUrl: '' }))}
+                      >
+                        <Trash2 size={17} /> Remover
+                      </button>
+                    )}
+                  </div>
+                  {photoError && <small className="photo-error" role="alert">{photoError}</small>}
+                </div>
+              </div>
               <label>
                 Nome completo
                 <input
@@ -731,7 +906,11 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
           )}
 
           <p className="terms">
-            Ao continuar você concorda com os Termos de Uso e a Política de Privacidade da Roxy.
+            Ao continuar você concorda com os{' '}
+            <button type="button" onClick={() => setLegalDialog('terms')}>Termos de Uso</button>
+            {' '}e a{' '}
+            <button type="button" onClick={() => setLegalDialog('privacy')}>Política de Privacidade</button>
+            {' '}da Roxy.
           </p>
         </div>
       </section>
@@ -827,7 +1006,116 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
           </section>
         </div>
       )}
+
+      {legalDialog && (
+        <div className="legal-dialog-backdrop" role="presentation" onMouseDown={() => setLegalDialog(null)}>
+          <section
+            aria-labelledby="legal-dialog-title"
+            aria-modal="true"
+            className="legal-dialog"
+            role="dialog"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="legal-dialog-header">
+              <div>
+                <p className="legal-dialog-eyebrow">Roxy · Transparência e cuidado</p>
+                <h2 id="legal-dialog-title">
+                  {legalDialog === 'terms' ? 'Termos de Uso' : 'Política de Privacidade'}
+                </h2>
+              </div>
+              <button aria-label="Fechar" className="legal-dialog-close" type="button" onClick={() => setLegalDialog(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="legal-dialog-tabs" role="tablist" aria-label="Documentos legais">
+              <button
+                aria-selected={legalDialog === 'terms'}
+                className={legalDialog === 'terms' ? 'active' : ''}
+                role="tab"
+                type="button"
+                onClick={() => setLegalDialog('terms')}
+              >
+                <FileText size={17} /> Termos de Uso
+              </button>
+              <button
+                aria-selected={legalDialog === 'privacy'}
+                className={legalDialog === 'privacy' ? 'active' : ''}
+                role="tab"
+                type="button"
+                onClick={() => setLegalDialog('privacy')}
+              >
+                <ShieldCheck size={17} /> Privacidade
+              </button>
+            </div>
+
+            <div className="legal-dialog-content" role="tabpanel">
+              {legalDialog === 'terms' ? <TermsContent /> : <PrivacyContent />}
+            </div>
+
+            <button className="primary-button legal-dialog-done" type="button" onClick={() => setLegalDialog(null)}>
+              Entendi
+            </button>
+          </section>
+        </div>
+      )}
     </main>
+  )
+}
+
+function TermsContent() {
+  return (
+    <>
+      <p className="legal-updated">Última atualização: 23 de novembro de 2026</p>
+      <section>
+        <h3>1. Sobre a plataforma</h3>
+        <p>O Roxy é um projeto acadêmico de apoio às consultas de fonoaudiologia infantil. Ele organiza pacientes, exercícios, resultados, áudios e recompensas, mas não substitui a avaliação clínica da fonoaudióloga.</p>
+      </section>
+      <section>
+        <h3>2. Uso profissional</h3>
+        <p>A profissional é responsável por cadastrar informações corretas, conduzir os exercícios e registrar a avaliação de cada atividade. O acesso não deve ser compartilhado com pessoas não autorizadas.</p>
+      </section>
+      <section>
+        <h3>3. Conteúdo e resultados</h3>
+        <p>As pontuações e indicações apresentadas servem para acompanhamento e organização da sessão. Decisões clínicas continuam sob responsabilidade da profissional habilitada.</p>
+      </section>
+      <section>
+        <h3>4. Uso responsável</h3>
+        <p>Não é permitido usar a plataforma para expor dados dos pacientes, inserir conteúdo ilegal ou utilizar as informações para finalidade diferente do acompanhamento autorizado.</p>
+      </section>
+      <section>
+        <h3>5. Alterações</h3>
+        <p>Como o Roxy está em evolução acadêmica, recursos e documentos podem ser atualizados para melhorar segurança, clareza e funcionamento.</p>
+      </section>
+    </>
+  )
+}
+
+function PrivacyContent() {
+  return (
+    <>
+      <p className="legal-updated">Última atualização: 23 de novembro de 2026</p>
+      <section>
+        <h3>1. Dados utilizados</h3>
+        <p>Podem ser cadastrados dados da profissional, informações do paciente e responsáveis, registros de sessões, avaliações, observações e áudios salvos pela profissional.</p>
+      </section>
+      <section>
+        <h3>2. Finalidade</h3>
+        <p>Os dados são usados para organizar os atendimentos, acompanhar a evolução, gerar prontuários e permitir a revisão de atividades realizadas durante a consulta.</p>
+      </section>
+      <section>
+        <h3>3. Dados de crianças</h3>
+        <p>Informações infantis exigem cuidado especial. A profissional deve possuir autorização do responsável e cadastrar somente o necessário para o acompanhamento fonoaudiológico.</p>
+      </section>
+      <section>
+        <h3>4. Áudio e imagem</h3>
+        <p>Gravações só devem ser mantidas quando necessárias e autorizadas. A foto de perfil é opcional e serve apenas para identificar a profissional dentro do sistema.</p>
+      </section>
+      <section>
+        <h3>5. Controle e exclusão</h3>
+        <p>A profissional pode excluir gravações e registros disponíveis na plataforma quando não forem mais necessários. Em uma implantação real, acesso, armazenamento e backup devem seguir a LGPD e as regras da clínica responsável.</p>
+      </section>
+    </>
   )
 }
 
@@ -885,7 +1173,13 @@ function Sidebar({ patients, professional, selectedPatientId, view, onNavigate, 
       </label>
 
       <div className="professional-card">
-        <span className="avatar-dot" />
+        <span className="avatar-dot">
+          {professional?.photoUrl ? (
+            <img src={professional.photoUrl} alt={`Foto de ${professional.name || 'profissional'}`} />
+          ) : (
+            <UserRound size={23} aria-hidden="true" />
+          )}
+        </span>
         <div>
           <strong>{professional?.name || 'Fga. Dra. Helena'}</strong>
           <small>{professional?.crfa || 'CRFa 12345-SP'}</small>
@@ -1313,6 +1607,7 @@ interface PracticeViewProps {
   queue: Exercise['prompts']
   recordedClips: Record<string, AudioClip>
   recordingPromptId: string | null
+  micLevel: number
   soundStatus: SoundStatus
   onBack: () => void
   onListen: () => void
@@ -1325,6 +1620,7 @@ function PracticeView({
   queue,
   recordedClips,
   recordingPromptId,
+  micLevel,
   soundStatus,
   onBack,
   onListen,
@@ -1334,13 +1630,13 @@ function PracticeView({
   const currentPrompt = queue[0]
   const selectedChoice = currentPrompt ? selectedChoices[currentPrompt.id] ?? null : null
   const needsMicrophone = exercise.mode === 'voice' || exercise.mode === 'narrative'
+  const currentClip = currentPrompt ? recordedClips[currentPrompt.id] : undefined
   const canRate = needsMicrophone
-    ? soundStatus === 'detected' || soundStatus === 'unavailable'
+    ? soundStatus === 'detected' || soundStatus === 'unavailable' || (soundStatus === 'silent' && Boolean(currentClip))
     : selectedChoice !== null
   const currentIndex = exercise.prompts.length - queue.length + 1
   const completed = exercise.prompts.length - queue.length
   const progressPercent = (completed / exercise.prompts.length) * 100
-  const currentClip = currentPrompt ? recordedClips[currentPrompt.id] : undefined
   const isRecordingCurrent = soundStatus === 'recording' && recordingPromptId === currentPrompt?.id
 
   if (!currentPrompt) {
@@ -1401,12 +1697,22 @@ function PracticeView({
                 {isRecordingCurrent ? <Square size={24} /> : <Mic size={26} />}
               </button>
 
+              <div
+                aria-label={isRecordingCurrent ? `Nível do microfone: ${Math.round(micLevel * 100)}%` : 'Indicador do microfone'}
+                className={`mic-level ${isRecordingCurrent ? 'active' : ''}`}
+              >
+                {Array.from({ length: 12 }, (_, index) => (
+                  <i className={micLevel >= (index + 1) / 12 ? 'lit' : ''} key={index} />
+                ))}
+              </div>
+
               <p className="sound-feedback">
                 {soundStatus === 'idle' && 'Aperte o microfone para gravar a resposta da criança.'}
-                {soundStatus === 'recording' && 'Gravando... toque novamente para parar ou aguarde alguns segundos.'}
+                {soundStatus === 'recording' && 'Gravando e ajustando a sensibilidade ao ambiente... fale em direção ao dispositivo.'}
                 {soundStatus === 'processing' && 'Salvando áudio da resposta...'}
-                {soundStatus === 'detected' && 'Áudio salvo e som detectado. Avaliação liberada.'}
-                {soundStatus === 'silent' && 'Nenhum som detectado. Tente o microfone novamente.'}
+                {soundStatus === 'detected' && 'Áudio salvo e voz detectada. Avaliação liberada.'}
+                {soundStatus === 'silent' && currentClip && 'Áudio salvo com volume baixo. Você pode ouvir, avaliar manualmente ou gravar novamente.'}
+                {soundStatus === 'silent' && !currentClip && 'Nenhum áudio foi captado. Verifique a permissão do microfone e tente novamente.'}
                 {soundStatus === 'unavailable' && 'Microfone indisponível. Avaliação manual liberada.'}
               </p>
             </>
@@ -1632,6 +1938,62 @@ interface AudioClipListProps {
   onDelete?: (sessionId: string, clipId: string) => void
   patients: Patient[]
   sessions: SessionRecord[]
+}
+
+interface AudioDeleteDialogProps {
+  onCancel: () => void
+  onConfirm: () => void
+  target: AudioDeleteTarget
+}
+
+function AudioDeleteDialog({ onCancel, onConfirm, target }: AudioDeleteDialogProps) {
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') onCancel()
+    }
+
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [onCancel])
+
+  return (
+    <div className="delete-dialog-backdrop" role="presentation" onMouseDown={onCancel}>
+      <section
+        aria-describedby="delete-audio-description"
+        aria-labelledby="delete-audio-title"
+        aria-modal="true"
+        className="delete-dialog"
+        role="alertdialog"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button aria-label="Fechar" className="delete-dialog-close" type="button" onClick={onCancel}>
+          <X size={19} />
+        </button>
+
+        <span className="delete-dialog-icon" aria-hidden="true">
+          <Trash2 size={26} />
+        </span>
+        <p className="delete-dialog-eyebrow">Áudio salvo</p>
+        <h2 id="delete-audio-title">Excluir esta gravação?</h2>
+        <p id="delete-audio-description">
+          A gravação <strong>“{target.promptTitle}”</strong> será removida do histórico de {target.patientName}.
+          Esta ação não poderá ser desfeita.
+        </p>
+
+        <div className="delete-dialog-context" aria-label="Detalhes da gravação">
+          <span><Mic size={17} /> Exercício</span>
+          <strong>{target.exerciseName}</strong>
+        </div>
+
+        <div className="delete-dialog-actions">
+          <button className="ghost-button" type="button" onClick={onCancel}>Cancelar</button>
+          <button className="danger-button" type="button" onClick={onConfirm} autoFocus>
+            <Trash2 size={18} /> Excluir áudio
+          </button>
+        </div>
+      </section>
+    </div>
+  )
 }
 
 function AudioClipList({ compact = false, onDelete, patients, sessions }: AudioClipListProps) {
