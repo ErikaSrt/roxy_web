@@ -1,40 +1,42 @@
 import type { Badge, Exercise, Patient } from './types'
 
-export const ROXY_LOGO = '/assets/roxy-brand-icon-v2.png'
+const asset = (filename: string) => `${import.meta.env.BASE_URL}assets/${filename}`
+
+export const ROXY_LOGO = asset('roxy-brand-icon-v2.png')
 
 export const badges: Badge[] = [
   {
     id: 'super-falante',
     name: 'Super Falante',
     exerciseId: 'repete-comigo',
-    image: '/assets/card-super-falante.jpg',
+    image: asset('card-super-falante.jpg'),
     color: '#9b74ff',
   },
   {
     id: 'bom-ouvinte',
     name: 'Bom Ouvinte',
     exerciseId: 'sons-e-mais',
-    image: '/assets/card-bom-ouvinte.jpg',
+    image: asset('card-bom-ouvinte.jpg'),
     color: '#3ba2db',
   },
   {
     id: 'fala-expressiva',
     name: 'Fala Expressiva',
     exerciseId: 'rimas-divertidas',
-    image: '/assets/card-falar-expressar.jpg',
+    image: asset('card-falar-expressar.jpg'),
     color: '#ef6f9d',
   },
   {
     id: 'contador-historias',
     name: 'Contador de Histórias',
     exerciseId: 'monte-historias',
-    image: '/assets/card-super-falante.jpg',
+    image: asset('card-super-falante.jpg'),
     color: '#f2b63f',
   },
-  { id: 'explorador-palavras', name: 'Explorador de Palavras', exerciseId: 'nomeie-imagem', image: '/assets/card-super-falante.jpg', color: '#7d69dc' },
-  { id: 'mestre-frases', name: 'Mestre das Frases', exerciseId: 'complete-frase', image: '/assets/card-falar-expressar.jpg', color: '#ef7f9f' },
-  { id: 'ouvido-atento', name: 'Ouvido Atento', exerciseId: 'sequencia-sonora', image: '/assets/card-bom-ouvinte.jpg', color: '#3ba2db' },
-  { id: 'respiracao-calma', name: 'Respiração Calma', exerciseId: 'sopro-respiracao', image: '/assets/card-super-falante.jpg', color: '#57b995' },
+  { id: 'explorador-palavras', name: 'Explorador de Palavras', exerciseId: 'nomeie-imagem', image: asset('card-super-falante.jpg'), color: '#7d69dc' },
+  { id: 'mestre-frases', name: 'Mestre das Frases', exerciseId: 'complete-frase', image: asset('card-falar-expressar.jpg'), color: '#ef7f9f' },
+  { id: 'ouvido-atento', name: 'Ouvido Atento', exerciseId: 'sequencia-sonora', image: asset('card-bom-ouvinte.jpg'), color: '#3ba2db' },
+  { id: 'respiracao-calma', name: 'Respiração Calma', exerciseId: 'sopro-respiracao', image: asset('card-super-falante.jpg'), color: '#57b995' },
 ]
 
 export const exercises: Exercise[] = [
