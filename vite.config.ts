@@ -1,8 +1,13 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// https://vite.dev/config/
+const base = process.env.VITE_BASE_PATH?.trim() || '/'
+
+if (!base.startsWith('/') || !base.endsWith('/')) {
+  throw new Error('VITE_BASE_PATH deve iniciar e terminar com "/" (ex.: /roxy_web/).')
+}
+
 export default defineConfig({
-  base: process.env.VITE_BASE_PATH || '/',
+  base,
   plugins: [react()],
 })

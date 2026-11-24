@@ -37,14 +37,14 @@ O projeto foi inspirado no prototipo visual da Roxy, mantendo a identidade com t
 
 ## Requisitos
 
-- Node.js instalado
-- pnpm instalado
+- Node.js 24 instalado
+- npm 12 instalado (incluido com o Node.js)
 
 Para verificar:
 
 ```bash
 node -v
-pnpm -v
+npm -v
 ```
 
 ## Como Rodar
@@ -52,7 +52,7 @@ pnpm -v
 Instale as dependencias:
 
 ```bash
-pnpm install
+npm ci
 ```
 
 Crie o arquivo de ambiente local:
@@ -64,7 +64,7 @@ copy .env.example .env.local
 Inicie o servidor de desenvolvimento:
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Abra o endereco exibido no terminal, normalmente:
@@ -73,36 +73,48 @@ Abra o endereco exibido no terminal, normalmente:
 http://127.0.0.1:5173/
 ```
 
- instale pelo npm:
-
-```bash
-npm install -g pnpm
-```
-
 O arquivo `package.json` precisa aparecer na raiz da aba Explorer do Cursor.
 
 ## Scripts
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Executa o app em modo desenvolvimento.
 
 ```bash
-pnpm build
+npm run build
 ```
 
 Valida TypeScript e gera a pasta `dist`.
 
 ```bash
-pnpm lint
+npm run lint
 ```
 
 Executa o Oxlint.
 
 ```bash
-pnpm preview
+npm test
+```
+
+Executa os testes automatizados da configuracao de publicacao.
+
+```bash
+npm run verify:dist
+```
+
+Confere os caminhos e arquivos da build antes do deploy.
+
+```bash
+npm run check
+```
+
+Executa lint, testes, build e validacao da `dist` em sequencia.
+
+```bash
+npm run preview
 ```
 
 Abre uma previa local da build de producao.
@@ -142,6 +154,7 @@ roxy-web/
     ARQUITETURA.md
     SUPABASE.md
     GITHUB.md
+    DEPLOYMENT.md
 ```
 
 ## Documentacao
@@ -150,6 +163,7 @@ roxy-web/
 - [Arquitetura tecnica](docs/ARQUITETURA.md)
 - [Banco de dados Supabase](docs/SUPABASE.md)
 - [Guia para GitHub](docs/GITHUB.md)
+- [Publicacao e recuperacao no GitHub Pages](docs/DEPLOYMENT.md)
 - [Planejamento Scrum para o Trello](docs/TRELLO_SCRUM.md)
 
 ## Privacidade

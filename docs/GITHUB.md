@@ -8,7 +8,7 @@ Confira se estes arquivos existem:
 - `.gitignore`
 - `.env.example`
 - `package.json`
-- `pnpm-lock.yaml`
+- `package-lock.json`
 - `src/`
 - `public/`
 - `supabase/schema.sql`
@@ -28,11 +28,11 @@ Esses itens ja estao protegidos pelo `.gitignore`.
 Rode:
 
 ```bash
-pnpm lint
-pnpm build
+npm ci
+npm run check
 ```
 
-Se os dois comandos passarem, o projeto esta pronto para commit.
+Se todos os comandos passarem, o projeto esta pronto para commit. O workflow repete as mesmas validacoes antes de publicar.
 
 ## Rodar no Cursor
 
@@ -45,8 +45,8 @@ C:\Users\sarto\Documents\Codex\roxy-web
 Depois execute:
 
 ```bash
-pnpm install
-pnpm dev
+npm ci
+npm run dev
 ```
 
 O projeto deve abrir em:
@@ -78,7 +78,7 @@ O repositorio local ja esta conectado como `origin`. Para uma nova copia, use:
 ```bash
 git clone https://github.com/ErikaSrt/roxy_web.git
 cd roxy_web
-pnpm install
+npm ci
 ```
 
 ## Atualizar Depois
@@ -91,6 +91,8 @@ git add .
 git commit -m "feat: descrever mudanca"
 git push
 ```
+
+O push em `main` inicia o pipeline do GitHub Pages. Consulte [DEPLOYMENT.md](DEPLOYMENT.md) para monitoramento, publicacao manual e recuperacao de versao.
 
 ## Sugestao de Descricao Para o GitHub
 

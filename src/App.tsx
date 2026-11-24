@@ -1516,12 +1516,12 @@ interface PatientFormProps {
 }
 
 function PatientForm({ initialPatient, onCancel, onSave }: PatientFormProps) {
-  const [patient, setPatient] = useState<Patient>(
-    initialPatient ?? {
+  const [patient, setPatient] = useState<Patient>(() =>
+    initialPatient ?? ({
       ...emptyPatient,
       id: createId(),
       createdAt: new Date().toISOString(),
-    },
+    }),
   )
 
   function updateField(field: keyof Patient, value: string) {

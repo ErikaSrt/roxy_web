@@ -11,55 +11,101 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Baixar o repositório
-        uses: actions/checkout@v4
-
-      - name: Preparar pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.19.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Preparar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24
-          cache: pnpm
+          cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Instalar dependências
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Validar código
-        run: pnpm run lint
+        run: npm run lint
+
+      - name: Executar testes
+        run: npm test
 
       - name: Gerar site
         env:
           VITE_BASE_PATH: /roxy_web/
           VITE_SUPPORT_EMAIL: suporteroxy256@gmail.com
           VITE_CONSULTANT_WHATSAPP: 554298104857
-        run: pnpm run build
+        run: npm run build
+
+      - name: Verificar artefato de produção
+        env:
+          EXPECTED_BASE_PATH: /roxy_web/
+        run: npm run verify:dist
 
       - name: Configurar GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
 
       - name: Preparar artefato
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: dist
+          retention-days: 1
+
+      - name: Registrar falha da validação
+        if: failure()
+        run: |
+          echo "## Publicação interrompida" >> "$GITHUB_STEP_SUMMARY"
+          echo "Lint, testes, build ou validação da pasta dist falharam. Nenhum deploy foi iniciado." >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Publicar
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
+
+      - name: Registrar falha da publicação
+        if: failure()
+        run: |
+          echo "## Falha no GitHub Pages" >> "$GITHUB_STEP_SUMMARY"
+          echo "O artefato foi validado, mas o GitHub Pages não concluiu a publicação. Consulte o passo Publicar." >> "$GITHUB_STEP_SUMMARY"
+
+  smoke-test:
+    name: Testar site publicado
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validar página e bundle em produção
+        env:
+          SITE_URL: ${{ needs.deploy.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          page="$(curl --fail --silent --show-error --location --retry 8 --retry-all-errors --retry-delay 5 "$SITE_URL")"
+          echo "$page" | grep -q "Roxy - Fonoaudiologia Infantil"
+          asset="$(echo "$page" | grep -oE 'src="[^"]+\.js"' | head -n 1 | cut -d'"' -f2)"
+          test -n "$asset"
+          asset_url="$(node -e 'console.log(new URL(process.argv[1], process.argv[2]).href)' "$asset" "$SITE_URL")"
+          curl --fail --silent --show-error --location "$asset_url" > /dev/null
+          echo "Site e bundle JavaScript responderam corretamente." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Registrar falha do teste publicado
+        if: failure()
+        run: |
+          echo "## Site publicado, mas indisponível" >> "$GITHUB_STEP_SUMMARY"
+          echo "O deploy terminou, porém o teste HTTP da página ou do bundle falhou. Execute a recuperação descrita em docs/DEPLOYMENT.md." >> "$GITHUB_STEP_SUMMARY"
