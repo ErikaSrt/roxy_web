@@ -3300,3 +3300,82 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* A recompensa continua oculta ate o resultado final */
 .exercise-card .surprise-chip { display: none !important; }
+
+/* Resultado seguro em telas pequenas */
+.result-panel,
+.result-layout,
+.result-copy {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.result-panel {
+  overflow: hidden;
+  width: 100%;
+}
+
+.result-copy p {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-empty-patients {
+  align-items: center;
+  background: #faf8fd;
+  border: 1px dashed #d9c8eb;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 22px;
+}
+
+.dashboard-empty-patients strong {
+  color: var(--roxy-ink);
+  display: block;
+}
+
+.dashboard-empty-patients p {
+  color: var(--roxy-muted);
+  margin: 5px 0 0;
+}
+
+@media (max-width: 620px) {
+  .result-panel {
+    padding: 20px 16px;
+  }
+
+  .result-layout {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .earned-card {
+    height: auto;
+    width: min(100%, 240px);
+  }
+
+  .result-copy {
+    text-align: center;
+  }
+
+  .result-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .result-actions button {
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .dashboard-empty-patients {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .dashboard-empty-patients .primary-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}

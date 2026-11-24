@@ -34,10 +34,8 @@ import {
   Wind,
   X,
 } from 'lucide-react'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
 import './App.css'
-import { ROXY_LOGO, badges, exercises, getBadge, getExercise, samplePatients } from './data'
+import { ROXY_LOGO, badges, exercises, getBadge, getExercise } from './data'
 import { createId, useStoredState } from './storage'
 import type { AppView, AudioClip, Exercise, ExerciseId, Patient, Professional, PromptAttempt, Rating, SessionRecord } from './types'
 
@@ -93,7 +91,7 @@ const viewTitles: Record<AppView, { title: string; subtitle: string }> = {
   },
 }
 
-type SoundStatus = 'idle' | 'recording' | 'detected' | 'silent' | 'unavailable' | 'processing'
+type SoundStatus = 'idle' | 'requesting' | 'recording' | 'detected' | 'silent' | 'unavailable' | 'processing'
 
 interface AudioDeleteTarget {
   clipId: string
@@ -122,7 +120,7 @@ function blobToDataUrl(blob: Blob) {
 
 function App() {
   const [professional, setProfessional] = useStoredState<Professional | null>('roxy.professional', null)
-  const [patients, setPatients] = useStoredState<Patient[]>('roxy.patients', samplePatients)
+  const [patients, setPatients] = useStoredState<Patient[]>('roxy.patients', [])
   const [sessions, setSessions] = useStoredState<SessionRecord[]>('roxy.sessions', [])
   const [showSplash, setShowSplash] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -195,6 +193,10 @@ function App() {
   useEffect(() => {
     return () => stopRecordingTracks()
   }, [])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [view])
 
   function stopRecordingTracks() {
     if (recordingTimeoutRef.current) {
@@ -299,6 +301,8 @@ function App() {
     if (!currentPrompt) return
 
     try {
+      setSoundStatus('requesting')
+
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error('Microfone não suportado neste navegador.')
       }
@@ -495,23 +499,73 @@ function App() {
     setExporting(true)
 
     try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
       const canvas = await html2canvas(reportRef.current, { backgroundColor: '#f6f3fc', scale: 2 })
-      const image = canvas.toDataURL('image/png')
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
-      const imageHeight = (canvas.height * pageWidth) / canvas.width
-      let heightLeft = imageHeight
-      let position = 0
+      const margin = 8
+      const usableWidth = pageWidth - margin * 2
+      const usableHeight = pageHeight - margin * 2
+      const widthScale = usableWidth / canvas.width
+      const renderedHeight = canvas.height * widthScale
 
-      pdf.addImage(image, 'PNG', 0, position, pageWidth, imageHeight)
-      heightLeft -= pageHeight
+      if (renderedHeight <= usableHeight * 1.08) {
+        const scale = Math.min(usableWidth / canvas.width, usableHeight / canvas.height)
+        const renderedWidth = canvas.width * scale
+        const fittedHeight = canvas.height * scale
+        const x = (pageWidth - renderedWidth) / 2
+        const image = canvas.toDataURL('image/jpeg', 0.94)
 
-      while (heightLeft > 0) {
-        position = heightLeft - imageHeight
-        pdf.addPage()
-        pdf.addImage(image, 'PNG', 0, position, pageWidth, imageHeight)
-        heightLeft -= pageHeight
+        pdf.addImage(image, 'JPEG', x, margin, renderedWidth, fittedHeight, undefined, 'FAST')
+      } else {
+        const pageSliceHeight = Math.max(1, Math.floor(usableHeight / widthScale))
+        let sourceY = 0
+        let pageIndex = 0
+
+        while (sourceY < canvas.height) {
+          const sliceHeight = Math.min(pageSliceHeight, canvas.height - sourceY)
+          const pageCanvas = document.createElement('canvas')
+          pageCanvas.width = canvas.width
+          pageCanvas.height = sliceHeight
+          const context = pageCanvas.getContext('2d')
+
+          if (!context) throw new Error('Não foi possível preparar o prontuário para exportação.')
+
+          context.fillStyle = '#f6f3fc'
+          context.fillRect(0, 0, pageCanvas.width, pageCanvas.height)
+          context.drawImage(
+            canvas,
+            0,
+            sourceY,
+            canvas.width,
+            sliceHeight,
+            0,
+            0,
+            canvas.width,
+            sliceHeight,
+          )
+
+          if (pageIndex > 0) pdf.addPage()
+
+          const sliceImage = pageCanvas.toDataURL('image/jpeg', 0.94)
+          pdf.addImage(
+            sliceImage,
+            'JPEG',
+            margin,
+            margin,
+            usableWidth,
+            sliceHeight * widthScale,
+            undefined,
+            'FAST',
+          )
+
+          sourceY += sliceHeight
+          pageIndex += 1
+        }
       }
 
       pdf.save(`prontuario-${selectedPatient.name.toLowerCase().replaceAll(' ', '-')}.pdf`)
@@ -531,6 +585,9 @@ function App() {
         professional={professional}
         setAuthMode={setAuthMode}
         onCreate={(nextProfessional) => {
+          setPatients([])
+          setSessions([])
+          setSelectedPatientId('')
           setProfessional(nextProfessional)
           setIsAuthenticated(true)
         }}
@@ -554,7 +611,7 @@ function App() {
         onLogout={() => setIsAuthenticated(false)}
       />
       <section className="workspace">
-        <Header view={view} />
+        <Header exercise={view === 'practice' ? selectedExercise : undefined} view={view} />
 
         {view === 'dashboard' && (
           <DashboardView
@@ -562,6 +619,7 @@ function App() {
             selectedPatientId={selectedPatient?.id ?? ''}
             sessions={sessions}
             onDeleteAudio={deleteAudioClip}
+            onNewPatient={() => openPatientForm()}
             onOpenPatient={(patient) => {
               setSelectedPatientId(patient.id)
               setView('reports')
@@ -1193,15 +1251,31 @@ function Sidebar({ patients, professional, selectedPatientId, view, onNavigate, 
 }
 
 interface HeaderProps {
+  exercise?: Exercise
   view: AppView
 }
 
-function Header({ view }: HeaderProps) {
+function Header({ exercise, view }: HeaderProps) {
+  const defaultCopy = viewTitles[view]
+  const copy = exercise
+    ? {
+        title: `Prática: ${exercise.name}`,
+        subtitle:
+          exercise.mode === 'choice'
+            ? 'A criança escolhe uma resposta e a fonoaudióloga registra a avaliação.'
+            : exercise.mode === 'breathing'
+              ? 'Conduza cada etapa respiratória e registre a resposta observada.'
+              : exercise.mode === 'narrative'
+                ? 'A criança constrói a narrativa e a fonoaudióloga registra a avaliação.'
+                : 'A criança fala, o sistema registra o áudio e a avaliação fica com a fonoaudióloga.',
+      }
+    : defaultCopy
+
   return (
     <header className="page-header">
       <div>
-        <h1>{viewTitles[view].title}</h1>
-        <p>{viewTitles[view].subtitle}</p>
+        <h1>{copy.title}</h1>
+        <p>{copy.subtitle}</p>
       </div>
     </header>
   )
@@ -1212,6 +1286,7 @@ interface DashboardViewProps {
   selectedPatientId: string
   sessions: SessionRecord[]
   onDeleteAudio: (sessionId: string, clipId: string) => void
+  onNewPatient: () => void
   onOpenPatient: (patient: Patient) => void
   onStartExercise: (patient: Patient, exerciseId: ExerciseId) => void
 }
@@ -1221,6 +1296,7 @@ function DashboardView({
   selectedPatientId,
   sessions,
   onDeleteAudio,
+  onNewPatient,
   onOpenPatient,
   onStartExercise,
 }: DashboardViewProps) {
@@ -1285,25 +1361,38 @@ function DashboardView({
           </div>
 
           <div className="dashboard-patient-list">
-            {patientStats.map(({ patient, progress, lastSession, nextExercise, audioCount, sessionCount }) => (
-              <div className={patient.id === selectedPatientId ? 'dashboard-patient active' : 'dashboard-patient'} key={patient.id}>
-                <div className="patient-avatar">
-                  <UserRound size={24} />
+            {patientStats.length ? (
+              patientStats.map(({ patient, progress, lastSession, nextExercise, audioCount, sessionCount }) => (
+                <div className={patient.id === selectedPatientId ? 'dashboard-patient active' : 'dashboard-patient'} key={patient.id}>
+                  <div className="patient-avatar">
+                    <UserRound size={24} />
+                  </div>
+                  <div className="dashboard-patient-copy">
+                    <button onClick={() => onOpenPatient(patient)}>{patient.name}</button>
+                    <span>{lastSession ? `Última sessão: ${lastSession.exerciseName}` : 'Ainda sem sessão registrada'}</span>
+                    <ProgressLine label="Progresso" value={progress} color="#8f79ff" />
+                  </div>
+                  <div className="dashboard-patient-meta">
+                    <span>{sessionCount} sessões</span>
+                    <span>{audioCount} áudios</span>
+                    <button className="pill-button mini" onClick={() => onStartExercise(patient, nextExercise.id)}>
+                      <PlayCircle size={15} /> Praticar
+                    </button>
+                  </div>
                 </div>
-                <div className="dashboard-patient-copy">
-                  <button onClick={() => onOpenPatient(patient)}>{patient.name}</button>
-                  <span>{lastSession ? `Última sessão: ${lastSession.exerciseName}` : 'Ainda sem sessão registrada'}</span>
-                  <ProgressLine label="Progresso" value={progress} color="#8f79ff" />
+              ))
+            ) : (
+              <div className="dashboard-empty-patients">
+                <span className="patient-avatar"><UserRound size={26} /></span>
+                <div>
+                  <strong>Nenhum paciente cadastrado</strong>
+                  <p>Cadastre o primeiro paciente para iniciar o acompanhamento clínico.</p>
                 </div>
-                <div className="dashboard-patient-meta">
-                  <span>{sessionCount} sessões</span>
-                  <span>{audioCount} áudios</span>
-                  <button className="pill-button mini" onClick={() => onStartExercise(patient, nextExercise.id)}>
-                    <PlayCircle size={15} /> Praticar
-                  </button>
-                </div>
+                <button className="primary-button compact" onClick={onNewPatient}>
+                  <PlusCircle size={17} /> Novo Paciente
+                </button>
               </div>
-            ))}
+            )}
           </div>
         </article>
 
@@ -1630,10 +1719,13 @@ function PracticeView({
   const currentPrompt = queue[0]
   const selectedChoice = currentPrompt ? selectedChoices[currentPrompt.id] ?? null : null
   const needsMicrophone = exercise.mode === 'voice' || exercise.mode === 'narrative'
+  const needsChoice = exercise.mode === 'choice'
   const currentClip = currentPrompt ? recordedClips[currentPrompt.id] : undefined
   const canRate = needsMicrophone
     ? soundStatus === 'detected' || soundStatus === 'unavailable' || (soundStatus === 'silent' && Boolean(currentClip))
-    : selectedChoice !== null
+    : needsChoice
+      ? selectedChoice !== null
+      : true
   const currentIndex = exercise.prompts.length - queue.length + 1
   const completed = exercise.prompts.length - queue.length
   const progressPercent = (completed / exercise.prompts.length) * 100
@@ -1693,7 +1785,11 @@ function PracticeView({
 
           {needsMicrophone ? (
             <>
-              <button className={`mic-button ${soundStatus}`} onClick={onListen} disabled={soundStatus === 'processing'}>
+              <button
+                className={`mic-button ${soundStatus}`}
+                onClick={onListen}
+                disabled={soundStatus === 'processing' || soundStatus === 'requesting'}
+              >
                 {isRecordingCurrent ? <Square size={24} /> : <Mic size={26} />}
               </button>
 
@@ -1708,6 +1804,7 @@ function PracticeView({
 
               <p className="sound-feedback">
                 {soundStatus === 'idle' && 'Aperte o microfone para gravar a resposta da criança.'}
+                {soundStatus === 'requesting' && 'Solicitando acesso ao microfone do dispositivo...'}
                 {soundStatus === 'recording' && 'Gravando e ajustando a sensibilidade ao ambiente... fale em direção ao dispositivo.'}
                 {soundStatus === 'processing' && 'Salvando áudio da resposta...'}
                 {soundStatus === 'detected' && 'Áudio salvo e voz detectada. Avaliação liberada.'}
@@ -1716,11 +1813,15 @@ function PracticeView({
                 {soundStatus === 'unavailable' && 'Microfone indisponível. Avaliação manual liberada.'}
               </p>
             </>
-          ) : (
+          ) : needsChoice ? (
             <p className="sound-feedback choice-feedback">
               {selectedChoice
                 ? `Resposta selecionada: ${selectedChoice}. A fonoaudióloga pode avaliar.`
                 : 'Selecione a resposta da criança para liberar a avaliação.'}
+            </p>
+          ) : (
+            <p className="sound-feedback choice-feedback">
+              Conduza a etapa com a criança e registre abaixo como ela realizou a atividade.
             </p>
           )}
 
