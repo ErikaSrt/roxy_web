@@ -29,7 +29,6 @@ O projeto foi inspirado no prototipo visual da Roxy, mantendo a identidade com t
 - React
 - TypeScript
 - Vite
-- Supabase JS
 - Lucide React
 - jsPDF
 - html2canvas
@@ -121,11 +120,9 @@ Abre uma previa local da build de producao.
 
 ## Variaveis de Ambiente
 
-O app funciona em modo local sem Supabase. Para conectar ao Supabase, preencha:
+O MVP funciona localmente com `localStorage`. Os canais públicos da tela inicial podem ser configurados com:
 
 ```env
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
 VITE_SUPPORT_EMAIL=suporteroxy256@gmail.com
 VITE_CONSULTANT_WHATSAPP=554298104857
 ```
@@ -145,7 +142,6 @@ roxy-web/
     App.css              # Estilos responsivos
     data.ts              # Exercicios, cartas e pacientes de exemplo
     storage.ts           # Persistencia local
-    supabase.ts          # Cliente Supabase opcional
     types.ts             # Tipos centrais do dominio
   supabase/
     schema.sql           # Estrutura inicial do banco
@@ -162,6 +158,7 @@ roxy-web/
 - [Requisitos do produto](docs/REQUISITOS.md)
 - [Arquitetura tecnica](docs/ARQUITETURA.md)
 - [Banco de dados Supabase](docs/SUPABASE.md)
+- [Auditoria de performance, acessibilidade e SEO](docs/PERFORMANCE.md)
 - [Guia para GitHub](docs/GITHUB.md)
 - [Publicacao e recuperacao no GitHub Pages](docs/DEPLOYMENT.md)
 - [Planejamento Scrum para o Trello](docs/TRELLO_SCRUM.md)

@@ -97,7 +97,7 @@ jobs:
         run: |
           set -euo pipefail
           page="$(curl --fail --silent --show-error --location --retry 8 --retry-all-errors --retry-delay 5 "$SITE_URL")"
-          echo "$page" | grep -q "Roxy - Fonoaudiologia Infantil"
+          echo "$page" | grep -q "Roxy | Fonoaudiologia Infantil"
           asset="$(echo "$page" | grep -oE 'src="[^"]+\.js"' | head -n 1 | cut -d'"' -f2)"
           test -n "$asset"
           asset_url="$(node -e 'console.log(new URL(process.argv[1], process.argv[2]).href)' "$asset" "$SITE_URL")"

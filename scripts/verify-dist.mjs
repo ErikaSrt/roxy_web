@@ -16,7 +16,9 @@ const indexPath = join(distDir, 'index.html')
 assert.ok(existsSync(indexPath), 'dist/index.html não existe.')
 
 const html = readFileSync(indexPath, 'utf8')
-assert.match(html, /<title>Roxy - Fonoaudiologia Infantil<\/title>/, 'O HTML produzido não é o site Roxy.')
+assert.match(html, /<title>Roxy \| Fonoaudiologia Infantil<\/title>/, 'O HTML produzido não é o site Roxy.')
+assert.match(html, /rel="canonical"/, 'A URL canônica não foi gerada.')
+assert.match(html, /property="og:image"/, 'A imagem Open Graph não foi gerada.')
 
 const urls = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((match) => match[1])
 const localUrls = urls.filter((url) => !/^(?:https?:|data:|mailto:|tel:|#)/.test(url))
@@ -42,7 +44,10 @@ walk(distDir)
 
 assert.ok(files.some((file) => file.endsWith('.js')), 'A dist não contém bundle JavaScript.')
 assert.ok(files.some((file) => file.endsWith('.css')), 'A dist não contém CSS de produção.')
-assert.ok(files.some((file) => /roxy-brand-icon-v2\.png$/.test(file)), 'A logo do Roxy não foi copiada para a dist.')
+assert.ok(files.some((file) => /roxy-brand-icon-v2\.webp$/.test(file)), 'A logo otimizada do Roxy não foi copiada para a dist.')
+for (const publicFile of ['favicon-48.png', 'apple-touch-icon.png', 'robots.txt', 'sitemap.xml', 'assets/og-roxy.jpg']) {
+  assert.ok(existsSync(join(distDir, publicFile)), `${publicFile} não foi copiado para a dist.`)
+}
 
 if (expectedBase !== '/') {
   for (const file of files.filter((item) => /\.(?:html|css|js)$/.test(item))) {

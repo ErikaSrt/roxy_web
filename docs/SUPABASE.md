@@ -2,11 +2,11 @@
 
 ## Status
 
-O projeto ja possui estrutura inicial de banco em `supabase/schema.sql`, mas a aplicacao ainda funciona em modo local quando as variaveis do Supabase nao estao preenchidas.
+O projeto possui a estrutura inicial de banco em `supabase/schema.sql`, mas a aplicacao atual funciona em modo local com `localStorage`. Para evitar JavaScript sem uso no MVP, o SDK do Supabase não faz parte do bundle atual.
 
 ## Variaveis de Ambiente
 
-Crie um arquivo `.env.local` com:
+Quando a integração real for iniciada, instale o cliente com `npm install @supabase/supabase-js` e crie um arquivo `.env.local` com:
 
 ```env
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co

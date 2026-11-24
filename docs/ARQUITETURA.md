@@ -18,8 +18,7 @@ Dados e dominio
 Persistencia local
   storage.ts
 
-Banco opcional
-  supabase.ts
+Banco planejado
   supabase/schema.sql
 ```
 
@@ -72,9 +71,9 @@ Centraliza os tipos TypeScript do dominio:
 
 Implementa persistencia local com `localStorage`, usada para manter dados no navegador durante o uso do prototipo funcional.
 
-### `src/supabase.ts`
+### `supabase/schema.sql`
 
-Cria o cliente Supabase apenas quando as variaveis de ambiente existem. Isso permite rodar o app localmente sem backend.
+Mantém o modelo de banco planejado para uma evolução futura. O SDK do Supabase não é enviado no bundle atual porque o MVP ainda usa armazenamento local.
 
 ## Persistencia Atual
 

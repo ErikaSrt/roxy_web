@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://erikasrt.github.io/roxy_web/sitemap.xml

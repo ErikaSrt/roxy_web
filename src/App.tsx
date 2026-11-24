@@ -118,6 +118,51 @@ function blobToDataUrl(blob: Blob) {
   })
 }
 
+function useDialogFocus(active: boolean, dialogRef: React.RefObject<HTMLElement | null>) {
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!active || !dialog) return
+
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const selector = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',')
+
+    const getFocusable = () => Array.from(dialog.querySelectorAll<HTMLElement>(selector))
+    getFocusable()[0]?.focus()
+
+    function keepFocusInside(event: KeyboardEvent) {
+      if (event.key !== 'Tab') return
+
+      const focusable = getFocusable()
+      if (!focusable.length) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    dialog.addEventListener('keydown', keepFocusInside)
+    return () => {
+      dialog.removeEventListener('keydown', keepFocusInside)
+      previousFocusRef.current?.focus()
+    }
+  }, [active, dialogRef])
+}
+
 function App() {
   const [professional, setProfessional] = useStoredState<Professional | null>('roxy.professional', null)
   const [patients, setPatients] = useStoredState<Patient[]>('roxy.patients', [])
@@ -597,7 +642,8 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">Ir para o conteúdo principal</a>
       <Sidebar
         patients={patients}
         professional={professional}
@@ -610,7 +656,7 @@ function App() {
         onPatientChange={setSelectedPatientId}
         onLogout={() => setIsAuthenticated(false)}
       />
-      <section className="workspace">
+      <main className="workspace" id="main-content" tabIndex={-1}>
         <Header exercise={view === 'practice' ? selectedExercise : undefined} view={view} />
 
         {view === 'dashboard' && (
@@ -692,7 +738,7 @@ function App() {
             sessions={patientSessions}
           />
         )}
-      </section>
+      </main>
       {audioDeleteTarget && (
         <AudioDeleteDialog
           target={audioDeleteTarget}
@@ -700,7 +746,7 @@ function App() {
           onConfirm={confirmAudioDeletion}
         />
       )}
-    </main>
+    </div>
   )
 }
 
@@ -719,7 +765,7 @@ function SplashScreen() {
           <span className="splash-orbit splash-orbit-two" aria-hidden="true" />
           <div className="splash-logo-wrap">
             <span className="splash-logo-glow" aria-hidden="true" />
-            <img src={ROXY_LOGO} alt="Roxy" />
+            <img src={ROXY_LOGO} alt="Roxy" width={384} height={384} decoding="async" fetchPriority="high" />
           </div>
           <div className="splash-voice" aria-hidden="true">
             <i />
@@ -762,6 +808,11 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
   const [contactDialog, setContactDialog] = useState<'support' | 'about' | 'consultant' | null>(null)
   const [legalDialog, setLegalDialog] = useState<'terms' | 'privacy' | null>(null)
   const [photoError, setPhotoError] = useState('')
+  const contactDialogRef = useRef<HTMLElement>(null)
+  const legalDialogRef = useRef<HTMLElement>(null)
+
+  useDialogFocus(Boolean(contactDialog), contactDialogRef)
+  useDialogFocus(Boolean(legalDialog), legalDialogRef)
 
   const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'suporteroxy256@gmail.com'
   const consultantPhone = (import.meta.env.VITE_CONSULTANT_WHATSAPP || '554298104857').replace(/\D/g, '')
@@ -816,7 +867,7 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
 
   return (
     <main className="auth-page">
-      <nav className="auth-nav">
+      <nav className="auth-nav" aria-label="Ajuda e informações">
         <button type="button" onClick={() => setContactDialog('support')}>
           <Mail size={17} /> Suporte
         </button>
@@ -830,7 +881,7 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
 
       <section className="auth-grid">
         <div className="brand-stage">
-          <img src={ROXY_LOGO} alt="Logo Roxy" />
+          <img src={ROXY_LOGO} alt="Logo Roxy" width={384} height={384} decoding="async" />
           <p>Fonoaudiologia infantil com acompanhamento leve, clínico e recompensador.</p>
         </div>
 
@@ -864,7 +915,7 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
 
           {authMode === 'email' && (
             <>
-              <img className="auth-logo" src={ROXY_LOGO} alt="Logo Roxy" />
+              <img className="auth-logo" src={ROXY_LOGO} alt="Logo Roxy" width={384} height={384} decoding="async" />
               <label>
                 Email
                 <input defaultValue={professional?.email ?? 'helena@fono.com'} />
@@ -886,7 +937,7 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
             <form className="stack-form" onSubmit={submitProfile}>
               <h2>Criar conta profissional</h2>
               <div className="profile-photo-field">
-                <div className="profile-photo-preview" aria-label="Pré-visualização da foto de perfil">
+                <div className="profile-photo-preview">
                   {profile.photoUrl ? (
                     <img src={profile.photoUrl} alt="Foto de perfil selecionada" />
                   ) : (
@@ -979,6 +1030,7 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
             aria-labelledby="contact-dialog-title"
             aria-modal="true"
             className="contact-dialog"
+            ref={contactDialogRef}
             role="dialog"
             onMouseDown={(event) => event.stopPropagation()}
           >
@@ -1071,6 +1123,7 @@ function AuthScreen({ authMode, professional, setAuthMode, onCreate, onLogin }: 
             aria-labelledby="legal-dialog-title"
             aria-modal="true"
             className="legal-dialog"
+            ref={legalDialogRef}
             role="dialog"
             onMouseDown={(event) => event.stopPropagation()}
           >
@@ -1198,16 +1251,21 @@ function Sidebar({ patients, professional, selectedPatientId, view, onNavigate, 
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <img src={ROXY_LOGO} alt="Roxy" />
+        <img src={ROXY_LOGO} alt="Roxy" width={384} height={384} decoding="async" />
         <strong>Roxy</strong>
         <span>Speech Therapy</span>
       </div>
 
-      <nav className="side-nav">
+      <nav className="side-nav" aria-label="Navegação principal">
         {items.map((item) => {
           const Icon = item.icon
           return (
-            <button className={view === item.view ? 'active' : ''} key={item.view} onClick={() => onNavigate(item.view)}>
+            <button
+              aria-current={view === item.view ? 'page' : undefined}
+              className={view === item.view ? 'active' : ''}
+              key={item.view}
+              onClick={() => onNavigate(item.view)}
+            >
               <Icon size={21} />
               {item.label}
             </button>
@@ -1256,6 +1314,7 @@ interface HeaderProps {
 }
 
 function Header({ exercise, view }: HeaderProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null)
   const defaultCopy = viewTitles[view]
   const copy = exercise
     ? {
@@ -1271,10 +1330,14 @@ function Header({ exercise, view }: HeaderProps) {
       }
     : defaultCopy
 
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: true })
+  }, [exercise?.id, view])
+
   return (
     <header className="page-header">
       <div>
-        <h1>{copy.title}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>{copy.title}</h1>
         <p>{copy.subtitle}</p>
       </div>
     </header>
@@ -1470,6 +1533,7 @@ function PatientsView({
           {deleteMode ? 'Modo Excluir Ativo' : 'Excluir Paciente'} <Trash2 size={16} />
         </button>
         <label className="search-box">
+          <span className="sr-only">Buscar pacientes</span>
           <Search size={17} />
           <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar paciente..." />
         </label>
@@ -1753,7 +1817,14 @@ function PracticeView({
         <span>{patient?.name}</span>
       </div>
 
-      <div className="practice-progress">
+      <div
+        aria-label="Progresso do exercício"
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={Math.round(progressPercent)}
+        className="practice-progress"
+        role="progressbar"
+      >
         <span style={{ width: `${progressPercent}%` }} />
       </div>
 
@@ -1771,6 +1842,7 @@ function PracticeView({
               <div className="prompt-options" aria-label="Opções de resposta">
                 {currentPrompt.options.map((option) => (
                   <button
+                    aria-pressed={selectedChoice === option}
                     className={selectedChoice === option ? 'selected' : ''}
                     key={option}
                     onClick={() => setSelectedChoices((current) => ({ ...current, [currentPrompt.id]: option }))}
@@ -1786,6 +1858,7 @@ function PracticeView({
           {needsMicrophone ? (
             <>
               <button
+                aria-label={isRecordingCurrent ? 'Parar gravação' : 'Iniciar gravação pelo microfone'}
                 className={`mic-button ${soundStatus}`}
                 onClick={onListen}
                 disabled={soundStatus === 'processing' || soundStatus === 'requesting'}
@@ -1795,14 +1868,18 @@ function PracticeView({
 
               <div
                 aria-label={isRecordingCurrent ? `Nível do microfone: ${Math.round(micLevel * 100)}%` : 'Indicador do microfone'}
+                aria-valuemax={100}
+                aria-valuemin={0}
+                aria-valuenow={Math.round(micLevel * 100)}
                 className={`mic-level ${isRecordingCurrent ? 'active' : ''}`}
+                role="meter"
               >
                 {Array.from({ length: 12 }, (_, index) => (
                   <i className={micLevel >= (index + 1) / 12 ? 'lit' : ''} key={index} />
                 ))}
               </div>
 
-              <p className="sound-feedback">
+              <p className="sound-feedback" role="status" aria-live="polite">
                 {soundStatus === 'idle' && 'Aperte o microfone para gravar a resposta da criança.'}
                 {soundStatus === 'requesting' && 'Solicitando acesso ao microfone do dispositivo...'}
                 {soundStatus === 'recording' && 'Gravando e ajustando a sensibilidade ao ambiente... fale em direção ao dispositivo.'}
@@ -1814,13 +1891,13 @@ function PracticeView({
               </p>
             </>
           ) : needsChoice ? (
-            <p className="sound-feedback choice-feedback">
+            <p className="sound-feedback choice-feedback" role="status" aria-live="polite">
               {selectedChoice
                 ? `Resposta selecionada: ${selectedChoice}. A fonoaudióloga pode avaliar.`
                 : 'Selecione a resposta da criança para liberar a avaliação.'}
             </p>
           ) : (
-            <p className="sound-feedback choice-feedback">
+            <p className="sound-feedback choice-feedback" role="status" aria-live="polite">
               Conduza a etapa com a criança e registre abaixo como ela realizou a atividade.
             </p>
           )}
@@ -1832,7 +1909,7 @@ function PracticeView({
                 <strong>Áudio deste card salvo</strong>
                 <small>{Math.max(1, Math.round(currentClip.durationMs / 1000))}s de gravação</small>
               </div>
-              <audio controls src={currentClip.dataUrl} />
+              <audio controls src={currentClip.dataUrl} title={`Áudio gravado: ${currentPrompt.title}`} />
             </div>
           )}
 
@@ -1891,7 +1968,14 @@ function ResultView({ record, onPracticeAgain, onReports }: ResultViewProps) {
         ★ ★ ★
       </div>
       <div className="result-layout">
-        <img className="earned-card" src={record.badge.image} alt={`Carta conquistada: ${record.badge.name}`} />
+        <img
+          className="earned-card"
+          src={record.badge.image}
+          alt={`Carta conquistada: ${record.badge.name}`}
+          decoding="async"
+          width={416}
+          height={520}
+        />
         <div className="result-copy">
           <span>Carta conquistada</span>
           <h2>{record.badge.name}</h2>
@@ -1997,7 +2081,17 @@ function ReportsView({ badges, exporting, onEditPatient, onExport, patient, refN
             <h2>Emblemas colecionáveis</h2>
             <div className="badge-grid">
               {badges.length ? (
-                badges.map((badge, index) => <img src={badge.image} alt={badge.name} key={`${badge.id}-${index}`} />)
+                badges.map((badge, index) => (
+                  <img
+                    src={badge.image}
+                    alt={badge.name}
+                    decoding="async"
+                    loading="lazy"
+                    width={416}
+                    height={520}
+                    key={`${badge.id}-${index}`}
+                  />
+                ))
               ) : (
                 <p className="muted">As cartas da Roxy aparecem aqui quando um exercício é concluído.</p>
               )}
@@ -2048,6 +2142,9 @@ interface AudioDeleteDialogProps {
 }
 
 function AudioDeleteDialog({ onCancel, onConfirm, target }: AudioDeleteDialogProps) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useDialogFocus(true, dialogRef)
+
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') onCancel()
@@ -2064,6 +2161,7 @@ function AudioDeleteDialog({ onCancel, onConfirm, target }: AudioDeleteDialogPro
         aria-labelledby="delete-audio-title"
         aria-modal="true"
         className="delete-dialog"
+        ref={dialogRef}
         role="alertdialog"
         onMouseDown={(event) => event.stopPropagation()}
       >
@@ -2134,7 +2232,7 @@ function AudioClipList({ compact = false, onDelete, patients, sessions }: AudioC
               </button>
             )}
           </div>
-          <audio controls src={clip.dataUrl} />
+          <audio controls src={clip.dataUrl} title={`Áudio gravado: ${clip.promptTitle}`} />
         </div>
       ))}
     </div>

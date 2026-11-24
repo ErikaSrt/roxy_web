@@ -18,6 +18,21 @@ test('os dados públicos usam BASE_URL em vez de caminhos absolutos', () => {
   const data = read('src/data.ts')
   assert.match(data, /import\.meta\.env\.BASE_URL/)
   assert.doesNotMatch(data, /['"]\/assets\//)
+  assert.match(data, /\.webp/)
+})
+
+test('metadados técnicos e arquivos de indexação estão configurados', () => {
+  const html = read('index.html')
+  assert.match(html, /rel="canonical"/)
+  assert.match(html, /property="og:image"/)
+  assert.match(html, /application\/ld\+json/)
+  assert.match(read('public/robots.txt'), /sitemap\.xml/i)
+  assert.match(read('public/sitemap.xml'), /https:\/\/erikasrt\.github\.io\/roxy_web\//)
+})
+
+test('o bundle do MVP não inclui o SDK Supabase ainda não utilizado', () => {
+  const packageJson = JSON.parse(read('package.json'))
+  assert.equal(packageJson.dependencies?.['@supabase/supabase-js'], undefined)
 })
 
 test('a aplicação usa uma única rota compatível com GitHub Pages', () => {

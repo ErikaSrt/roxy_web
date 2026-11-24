@@ -2,16 +2,50 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/assets/roxy-brand-icon-v2.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6d1fac" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta
       name="description"
-      content="Roxy, plataforma responsiva para acompanhamento fonoaudiologico infantil."
+      content="Roxy é uma plataforma responsiva para apoiar atendimentos de fonoaudiologia infantil, com exercícios, prontuários e acompanhamento clínico."
     />
-    <title>Roxy - Fonoaudiologia Infantil</title>
+    <link rel="canonical" href="https://erikasrt.github.io/roxy_web/" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="preload" as="image" href="/assets/roxy-brand-icon-v2.webp" type="image/webp" fetchpriority="high" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="Roxy" />
+    <meta property="og:title" content="Roxy | Fonoaudiologia Infantil" />
+    <meta property="og:description" content="Exercícios guiados, prontuários e acompanhamento clínico infantil em uma experiência acolhedora." />
+    <meta property="og:url" content="https://erikasrt.github.io/roxy_web/" />
+    <meta property="og:image" content="https://erikasrt.github.io/roxy_web/assets/og-roxy.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Mascote gato e identidade visual da plataforma Roxy" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Roxy | Fonoaudiologia Infantil" />
+    <meta name="twitter:description" content="Exercícios guiados, prontuários e acompanhamento clínico infantil." />
+    <meta name="twitter:image" content="https://erikasrt.github.io/roxy_web/assets/og-roxy.jpg" />
+
+    <title>Roxy | Fonoaudiologia Infantil</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Roxy",
+        "applicationCategory": "HealthApplication",
+        "operatingSystem": "Web",
+        "url": "https://erikasrt.github.io/roxy_web/",
+        "description": "Plataforma responsiva de apoio a atendimentos de fonoaudiologia infantil."
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>Ative o JavaScript para utilizar a plataforma Roxy.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
